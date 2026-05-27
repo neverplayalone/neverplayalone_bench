@@ -1,0 +1,13 @@
+{
+  "name": "mcbench-random-walker",
+  "version": "0.1.0",
+  "description": "Reference mineflayer agent: connects, wanders, breaks the nearest matching block.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "mineflayer": "^4.20.0",
+    "mineflayer-pathfinder": "^2.4.5"
+  }
+}

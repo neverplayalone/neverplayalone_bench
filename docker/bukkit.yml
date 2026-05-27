@@ -1,0 +1,7 @@
+settings:
+  # Disable the per-IP reconnect throttle (default 4000ms).
+  # We run multiple bots (agent + recorder) from the same host and need
+  # them to be able to (re)connect back-to-back without rate limiting.
+  connection-throttle: -1
+  allow-end: true
+  warn-on-overload: false

@@ -1,0 +1,26 @@
+id: kill_zombies
+difficulty: simple
+goal: "Kill 3 zombies nearby. You start with a diamond sword and full armor."
+
+setup:
+  world: flat
+  commands:
+    - /gamemode survival BenchmarkBot
+    - /difficulty normal
+    - /give BenchmarkBot minecraft:diamond_sword 1
+    - /item replace entity BenchmarkBot armor.head with minecraft:iron_helmet
+    - /item replace entity BenchmarkBot armor.chest with minecraft:iron_chestplate
+    - /item replace entity BenchmarkBot armor.legs with minecraft:iron_leggings
+    - /item replace entity BenchmarkBot armor.feet with minecraft:iron_boots
+    - /summon minecraft:zombie ~3 ~ ~3
+    - /summon minecraft:zombie ~-3 ~ ~3
+    - /summon minecraft:zombie ~3 ~ ~-3
+
+timeout_seconds: 90
+
+success:
+  threshold: 1.0
+  rules:
+    - kind: entities_killed
+      entity: zombie
+      min_count: 3

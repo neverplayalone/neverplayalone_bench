@@ -1,0 +1,20 @@
+id: chop_oak_log
+difficulty: simple
+goal: "Chop 5 oak_log blocks and put them in your inventory."
+
+setup:
+  world: flat
+  commands:
+    - /gamemode survival BenchmarkBot
+    - /give BenchmarkBot minecraft:iron_axe 1
+    - /fill ~3 ~ ~3 ~8 ~3 ~8 minecraft:oak_log
+    - /tp BenchmarkBot ~ ~ ~
+
+timeout_seconds: 120
+
+success:
+  threshold: 1.0
+  rules:
+    - kind: inventory_contains
+      item: oak_log
+      min_count: 5

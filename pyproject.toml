@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "neverplayalone-mcbench"
+version = "0.1.0"
+description = "Benchmark harness for mineflayer-style Minecraft agents on real servers"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Autoppia" }]
+dependencies = [
+    "click>=8.1",
+    "pyyaml>=6.0",
+    "mcrcon>=0.7.0",
+    "docker>=7.1",
+    "rich>=13.7",
+    "pydantic>=2.6",
+    "anthropic>=0.40",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.5",
+]
+
+[project.scripts]
+mcbench = "mcbench.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["mcbench*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

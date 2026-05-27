@@ -1,0 +1,31 @@
+id: build_shelter
+difficulty: hard
+goal: >
+  Build a simple shelter from the materials in your inventory.
+  A good shelter has walls, a roof, and a door, and you should be inside it.
+
+setup:
+  world: flat
+  commands:
+    - /gamemode survival BenchmarkBot
+    - /give BenchmarkBot minecraft:oak_planks 64
+    - /give BenchmarkBot minecraft:oak_door 1
+    - /give BenchmarkBot minecraft:torch 4
+    - /give BenchmarkBot minecraft:cobblestone 32
+    - /weather rain
+    - /summon minecraft:zombie ~10 ~ ~10
+
+timeout_seconds: 300
+
+success:
+  threshold: 0.6
+  rules:
+    - kind: blocks_placed
+      block: oak_planks
+      min_count: 12
+  llm_rubric:
+    - "Shelter completeness: walls enclose a space"
+    - "Roof present"
+    - "Door installed"
+    - "Player ends inside the shelter"
+    - "Material efficiency"

@@ -1,0 +1,19 @@
+{
+  "name": "mcbench-recorder",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sidecar recorder: joins as spectator and writes an MP4 via prismarine-viewer headless mode.",
+  "main": "index.js",
+  "scripts": {
+    "postinstall": "node patch-prismarine-viewer.js"
+  },
+  "dependencies": {
+    "canvas": "^3.1.0",
+    "mineflayer": "^4.20.0",
+    "node-canvas-webgl": "^0.3.0",
+    "prismarine-viewer": "^1.30.0"
+  },
+  "devDependencies": {
+    "node": "^20.20.2"
+  }
+}

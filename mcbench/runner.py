@@ -1,0 +1,262 @@
+"""Runner: glue the server, agent, and grader together for a single task run."""
+
+from __future__ import annotations
+
+import json
+import re
+import time
+import uuid
+from pathlib import Path
+
+from mcrcon import MCRcon
+from rich.console import Console
+
+from .agents import Agent
+from .agents.base import AgentRunContext
+from .config import TaskConfig
+from .grader import grade
+from .rcon import rcon_session, run_commands
+from .recorder import Recorder, RecordOptions, is_available as recorder_available, wait_for_settle
+from .server import ServerConfig, wait_for_ready
+from .trace import FinalState, Trace, TraceEvent
+
+console = Console()
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+RESULTS_DIR = REPO_ROOT / "results"
+
+USERNAME = "BenchmarkBot"
+
+
+def _setup_commands_for_agent(commands: list[str], username: str) -> list[str]:
+    """Keep sidecar players such as RecorderCam from matching task-local @p."""
+    return [cmd.replace("@p", username) for cmd in commands]
+
+
+def _snapshot_final_state(mcr: MCRcon, username: str) -> FinalState:
+    """Pull a final-state snapshot from the server via RCON."""
+    state = FinalState()
+
+    # Position via /data get
+    raw = mcr.command(f"data get entity {username} Pos")
+    state.position = _parse_pos(raw)
+
+    raw = mcr.command(f"data get entity {username} Health")
+    state.health = _parse_scalar(raw)
+
+    raw = mcr.command(f"data get entity {username} foodLevel")
+    state.food = _parse_scalar(raw)
+
+    # Inventory
+    raw = mcr.command(f"data get entity {username} Inventory")
+    state.inventory = _parse_inventory(raw)
+
+    return state
+
+
+def _fill_inventory_from_agent_events(trace: Trace) -> None:
+    if trace.final_state.inventory:
+        return
+    for event in reversed(trace.events):
+        inventory = event.data.get("inventory")
+        if not isinstance(inventory, dict):
+            continue
+        parsed: dict[str, int] = {}
+        for key, value in inventory.items():
+            if isinstance(key, str) and isinstance(value, int):
+                parsed[key] = value
+        if parsed:
+            trace.final_state.inventory = parsed
+            trace.append(
+                TraceEvent(
+                    kind="info",
+                    data={"msg": "used agent-reported inventory fallback"},
+                )
+            )
+            return
+
+
+_NUM = r"-?\d+(?:\.\d+)?"
+
+
+def _parse_pos(raw: str) -> tuple[float, float, float] | None:
+    m = re.search(rf"\[({_NUM})d?, ({_NUM})d?, ({_NUM})d?\]", raw)
+    if not m:
+        return None
+    return float(m.group(1)), float(m.group(2)), float(m.group(3))
+
+
+def _parse_scalar(raw: str) -> float | None:
+    m = re.search(rf"({_NUM})[a-zA-Z]?\s*$", raw.strip())
+    return float(m.group(1)) if m else None
+
+
+def _parse_inventory(raw: str) -> dict[str, int]:
+    """Very rough parser of `/data get entity ... Inventory` output.
+
+    The server returns SNBT like:
+        ... [{Slot:0b, id:"minecraft:oak_log", Count:5b}, ...]
+    We pull (id, Count) pairs without trying to be exhaustive.
+    """
+    inv: dict[str, int] = {}
+    pairs = [
+        (item_id, count)
+        for item_id, count in re.findall(
+            r'id\s*:\s*"minecraft:([^"]+)".{0,500}?count\s*:\s*(\d+)',
+            raw,
+            re.IGNORECASE | re.DOTALL,
+        )
+    ]
+    pairs.extend(
+        (item_id, count)
+        for count, item_id in re.findall(
+            r'count\s*:\s*(\d+).{0,500}?id\s*:\s*"minecraft:([^"]+)"',
+            raw,
+            re.IGNORECASE | re.DOTALL,
+        )
+    )
+    for item_id, count in pairs:
+        inv[item_id] = inv.get(item_id, 0) + int(count)
+    return inv
+
+
+def run_task(
+    task: TaskConfig,
+    agent: Agent,
+    server: ServerConfig | None = None,
+    record: RecordOptions | None = None,
+) -> Trace:
+    server = server or ServerConfig()
+    run_id = f"{task.id}-{uuid.uuid4().hex[:8]}"
+    out_dir = RESULTS_DIR / run_id
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    console.log(f"[bold cyan]Run[/]: {run_id}")
+    console.log("Waiting for server ready…")
+    wait_for_ready(server)
+
+    trace = Trace(task_id=task.id, agent_name=agent.spec.name, started_at=time.time())
+
+    # 1. World-level setup that doesn't depend on the player existing
+    console.log("Setting world gamerules…")
+    with rcon_session(server.host, server.rcon_port, server.rcon_password) as mcr:
+        mcr.command("gamerule doDaylightCycle false")
+        mcr.command("gamerule doWeatherCycle false")
+        mcr.command("time set day")
+
+    # 2. Optional: start the recorder sidecar so it's spectating before the agent acts.
+    recorder: Recorder | None = None
+    if record is not None:
+        ok, reason = recorder_available()
+        if not ok:
+            console.log(f"[yellow]Recording disabled[/]: {reason}")
+        else:
+            record.output = out_dir / "recording.mp4"
+            record.host = server.host
+            record.port = server.game_port
+            record.target_username = USERNAME
+            recorder = Recorder(record)
+            console.log(f"Starting recorder → {record.output}")
+            recorder.start()
+            # Recorder needs to connect + open ffmpeg before the agent starts
+            # moving, or the first few seconds will be blank.
+            wait_for_settle(2.5)
+            try:
+                with rcon_session(server.host, server.rcon_port, server.rcon_password) as mcr:
+                    mcr.command(f"op {record.recorder_username}")
+                    mcr.command(f"gamemode spectator {record.recorder_username}")
+            except Exception as e:
+                trace.append(
+                    TraceEvent(kind="error", data={"msg": f"recorder setup failed: {e}"})
+                )
+
+    # 3. Launch the agent. It must emit a {"kind":"ready"} event once spawned.
+    console.log(f"Launching agent [bold]{agent.spec.name}[/] (timeout {task.timeout_seconds}s)…")
+    ctx = AgentRunContext(
+        host=server.host,
+        port=server.game_port,
+        username=USERNAME,
+        goal=task.goal,
+        timeout_seconds=task.timeout_seconds,
+    )
+
+    setup_done = False
+    final_state_captured = False
+    try:
+        for event in agent.run(ctx):
+            trace.append(event)
+
+            # On the agent's first "ready" event: op the bot and run per-task setup
+            # commands. These reference USERNAME, so they need the player to exist.
+            if not setup_done and event.kind == "ready":
+                console.log(f"Agent spawned; running {len(task.setup.commands)} setup commands…")
+                try:
+                    with rcon_session(
+                        server.host, server.rcon_port, server.rcon_password
+                    ) as mcr:
+                        mcr.command(f"op {USERNAME}")
+                        mcr.command(f"clear {USERNAME}")
+                        mcr.command("kill @e[type=item]")
+                        run_commands(mcr, _setup_commands_for_agent(task.setup.commands, USERNAME))
+                        mcr.command(f"gamemode survival {USERNAME}")
+                        if recorder is not None:
+                            if record.pov == "third":
+                                mcr.command(
+                                    f"execute at {USERNAME} run tp {record.recorder_username} ~6 ~5 ~6 -135 35"
+                                )
+                            else:
+                                mcr.command(f"tp {record.recorder_username} {USERNAME}")
+                                mcr.command(f"spectate {USERNAME} {record.recorder_username}")
+                except Exception as e:
+                    trace.append(
+                        TraceEvent(kind="error", data={"msg": f"setup failed: {e}"})
+                    )
+                setup_done = True
+            if event.kind == "done":
+                console.log("Agent reported done.")
+                break
+    finally:
+        if setup_done:
+            console.log("Capturing final state…")
+            try:
+                with rcon_session(server.host, server.rcon_port, server.rcon_password) as mcr:
+                    trace.final_state = _snapshot_final_state(mcr, USERNAME)
+                final_state_captured = True
+            except Exception as e:
+                trace.append(TraceEvent(kind="error", data={"msg": f"snapshot failed: {e}"}))
+        agent.stop()
+        if recorder is not None:
+            console.log("Stopping recorder…")
+            recorder.stop()
+            if record and record.output.exists() and record.output.stat().st_size > 0:
+                console.log(f"Recording saved: {record.output}")
+                if record.output.stat().st_size < 10_000 and recorder.stderr_log:
+                    console.log("[yellow]Recorder stderr (tail):[/]")
+                    for line in recorder.stderr_log[-40:]:
+                        console.log(f"  {line}")
+            else:
+                console.log("[yellow]Recording produced no output.[/]")
+                if recorder.stderr_log:
+                    console.log("[yellow]Recorder stderr (tail):[/]")
+                    for line in recorder.stderr_log[-40:]:
+                        console.log(f"  {line}")
+
+    trace.ended_at = time.time()
+
+    if not final_state_captured:
+        console.log("Capturing final state…")
+        try:
+            with rcon_session(server.host, server.rcon_port, server.rcon_password) as mcr:
+                trace.final_state = _snapshot_final_state(mcr, USERNAME)
+        except Exception as e:  # don't fail the whole run because of a snapshot hiccup
+            trace.append(TraceEvent(kind="error", data={"msg": f"snapshot failed: {e}"}))
+
+    _fill_inventory_from_agent_events(trace)
+
+    # 3. Grade
+    report = grade(task, trace)
+    (out_dir / "trace.json").write_text(trace.model_dump_json(indent=2))
+    (out_dir / "report.json").write_text(json.dumps(report, indent=2))
+    console.log(f"[bold green]Result[/]: {report['outcome']} (score={report['score']:.2f})")
+    console.log(f"Artifacts: {out_dir}")
+    return trace
