@@ -1,0 +1,11 @@
+{
+  "name": "mcbench-oracle",
+  "version": "0.1.0",
+  "description": "Validation solver: reads a task's success rule (MCBENCH_RULES) and directly performs it (mine/place/kill/craft/smelt) to confirm the task is solvable.",
+  "main": "index.js",
+  "dependencies": {
+    "mineflayer": "^4.20.0",
+    "mineflayer-pathfinder": "^2.4.5",
+    "vec3": "^0.1.8"
+  }
+}

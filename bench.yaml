@@ -10,25 +10,25 @@ agent:
 
 defaults:
   difficulty: simple
-  count: 3            # seeded instances generated per style (seeds seed_base..seed_base+count-1)
+  count: 1            # seeded instances generated per style (seeds seed_base..seed_base+count-1)
   seed_base: 0
   reset: true
   record: true       # on/off: capture a ReplayMod .mcpr per task into recording/ (slower)
 
 styles:
   # --- mining ---
-  - mine_ore
+  # - mine_ore
   # - mine_stone
   # - mine_wood
   # - dig_dirt
   # --- combat (sealed barrier arenas) ---
-  # - hunt_hostiles
-  # - hunt_passives
+  - hunt_hostiles
+  - hunt_passives
   # --- crafting / smelting ---
-  # - craft_basics
-  # - smelt_ingots
+  - craft_basics
+  - smelt_ingots
   # --- building / placement ---
-  # - place_blocks
+  - place_blocks
   # - { style: place_blocks, count: 3, difficulty: hard }   # per-style override example
 
 # Optionally also run a frozen, committed task set:

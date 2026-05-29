@@ -12,6 +12,7 @@ otherwise with `python main.py`.
 
 from __future__ import annotations
 
+import json
 import os
 import signal
 import subprocess
@@ -53,6 +54,8 @@ class SubprocessAgent(Agent):
             "MCBENCH_GOAL": ctx.goal,
             "MCBENCH_TIMEOUT": str(ctx.timeout_seconds),
         }
+        if ctx.rules is not None:
+            env["MCBENCH_RULES"] = json.dumps(ctx.rules)
         cwd = path if path.is_dir() else path.parent
         self.proc = subprocess.Popen(
             cmd,

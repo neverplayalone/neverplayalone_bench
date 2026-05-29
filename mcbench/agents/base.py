@@ -27,6 +27,10 @@ class AgentRunContext:
     username: str
     goal: str
     timeout_seconds: int
+    # The task's success rules, serialized as dicts. Set ONLY in validation mode
+    # (the oracle needs them); never exposed to a normally-evaluated agent, which
+    # would otherwise be told the exact win condition.
+    rules: list[dict] | None = None
 
 
 class Agent(ABC):

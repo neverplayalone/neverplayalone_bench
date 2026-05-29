@@ -108,27 +108,30 @@ def reset_world() -> None:
 
 
 def wipe_player_data() -> None:
-    """Delete saved player data + statistics so bots rejoin fresh each run.
+    """Delete saved player data (inventory/health/position) so bots rejoin fresh.
 
     A bot that disconnects while dead (on the death screen) persists Health:0 in
     its offline save; on the next run it loads already-dead, dies before it can
-    spawn, and the run silently fails. Wiping playerdata each reset prevents that
-    and also zeroes lifetime statistics, so the per-episode scoreboard counters
-    start from a clean baseline. Safe while the server runs: the bots are offline
-    during reset, so nothing holds these files open, and the server recreates the
-    player at world spawn (alive, full health) on next join. Advancements are left
-    intact so recipe unlocks survive.
+    spawn, and the run silently fails. Wiping playerdata each reset prevents that —
+    the server recreates the player at world spawn (alive, full health) on join.
+    Safe while the server runs: the bots are offline during reset, so nothing holds
+    these files open.
+
+    Statistics (world/stats) are deliberately NOT deleted: the per-episode grading
+    reads minecraft.mined/used/killed via scoreboard objectives and measures the
+    delta against a baseline captured at setup. Deleting the stats file resets the
+    underlying stats but leaves the scoreboard objectives showing stale values,
+    desyncing baseline vs. final and zeroing every delta. Letting stats accumulate
+    keeps the objectives in sync, so the delta is always this episode's true count.
     """
-    world = DATA_DIR / "world"
-    for sub, pattern in (("playerdata", "*.dat*"), ("stats", "*.json")):
-        directory = world / sub
-        if not directory.exists():
-            continue
-        for f in directory.glob(pattern):
-            try:
-                f.unlink()
-            except OSError:
-                pass
+    directory = DATA_DIR / "world" / "playerdata"
+    if not directory.exists():
+        return
+    for f in directory.glob("*.dat*"):
+        try:
+            f.unlink()
+        except OSError:
+            pass
 
 
 # Block layers of the generated FLAT world (LEVEL_TYPE=FLAT, 1.20.4):
