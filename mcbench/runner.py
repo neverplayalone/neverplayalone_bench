@@ -18,7 +18,7 @@ from .grader import grade
 from .rcon import rcon_session, run_commands
 from .recorder import Recorder, RecordOptions, is_available as recorder_available, wait_for_settle
 from .replay_tool import export_mcpr
-from .server import ServerConfig, wait_for_ready
+from .server import ServerConfig, clean_world_inplace, wait_for_ready
 from .trace import FinalState, Trace, TraceEvent
 
 console = Console()
@@ -34,7 +34,41 @@ def _setup_commands_for_agent(commands: list[str], username: str) -> list[str]:
     return [cmd.replace("@p", username) for cmd in commands]
 
 
-def _snapshot_final_state(mcr: MCRcon, username: str) -> FinalState:
+def _stat_objectives(task: TaskConfig) -> list[tuple[str, str, str, str]]:
+    """Server-side statistic objectives needed to grade a task's rules.
+
+    Returns (objective_name, criterion, rule_kind, target) per rule that must be
+    measured from the server rather than the agent's self-report. This is what
+    makes blocks_broken/blocks_placed/entities_killed trustworthy — the agent
+    can't inflate a statistic it doesn't control.
+    """
+    out: list[tuple[str, str, str, str]] = []
+    for i, rule in enumerate(task.success.rules):
+        if rule.kind == "blocks_broken" and rule.block:
+            mc_id = rule.block.split(":")[-1]
+            out.append((f"mcb_mined_{i}", f"minecraft.mined:minecraft.{mc_id}", rule.kind, rule.block))
+        elif rule.kind == "blocks_placed" and rule.block:
+            mc_id = rule.block.split(":")[-1]
+            out.append((f"mcb_used_{i}", f"minecraft.used:minecraft.{mc_id}", rule.kind, rule.block))
+        elif rule.kind == "entities_killed" and rule.entity:
+            mc_id = rule.entity.split(":")[-1]
+            out.append((f"mcb_kill_{i}", f"minecraft.killed:minecraft.{mc_id}", rule.kind, rule.entity))
+    return out
+
+
+def _read_score(mcr: MCRcon, username: str, objective: str) -> int:
+    """Read a player's scoreboard value; 0 when unset/unknown."""
+    raw = mcr.command(f"scoreboard players get {username} {objective}")
+    m = re.search(r"has (-?\d+)", raw)
+    return int(m.group(1)) if m else 0
+
+
+def _snapshot_final_state(
+    mcr: MCRcon,
+    username: str,
+    stat_objs: list[tuple[str, str, str, str]],
+    stat_baseline: dict[str, int],
+) -> FinalState:
     """Pull a final-state snapshot from the server via RCON."""
     state = FinalState()
 
@@ -51,6 +85,18 @@ def _snapshot_final_state(mcr: MCRcon, username: str) -> FinalState:
     # Inventory
     raw = mcr.command(f"data get entity {username} Inventory")
     state.inventory = _parse_inventory(raw)
+
+    # Server-authoritative counters: episode delta = final stat - baseline at setup.
+    # Statistic objectives mirror the player's lifetime stats, which persist across
+    # runs, so we measure the per-episode change rather than the absolute value.
+    for name, _criterion, kind, target in stat_objs:
+        delta = max(0, _read_score(mcr, username, name) - stat_baseline.get(name, 0))
+        if kind == "blocks_broken":
+            state.blocks_broken[target] = delta
+        elif kind == "blocks_placed":
+            state.blocks_placed[target] = delta
+        elif kind == "entities_killed":
+            state.entities_killed[target] = delta
 
     return state
 
@@ -126,6 +172,7 @@ def run_task(
     agent: Agent,
     server: ServerConfig | None = None,
     record: RecordOptions | None = None,
+    reset: bool = True,
 ) -> Trace:
     server = server or ServerConfig()
     run_id = f"{task.id}-{uuid.uuid4().hex[:8]}"
@@ -135,8 +182,18 @@ def run_task(
     console.log(f"[bold cyan]Run[/]: {run_id}")
     console.log("Waiting for server ready…")
     wait_for_ready(server)
+    if reset:
+        # Clean terrain/entities from previous runs so they don't leak into this
+        # one. Without this, blocks placed by a build task or a task's /fill setup
+        # persist across runs and break reproducibility. Done in place over RCON
+        # (no container restart) to keep it fast.
+        console.log("Resetting world for a clean run…")
+        clean_world_inplace(server)
 
     trace = Trace(task_id=task.id, agent_name=agent.spec.name, started_at=time.time())
+
+    stat_objs = _stat_objectives(task)
+    stat_baseline: dict[str, int] = {}
 
     # 1. World-level setup that doesn't depend on the player existing
     console.log("Setting world gamerules…")
@@ -200,11 +257,21 @@ def run_task(
                         mcr.command(f"op {USERNAME}")
                         mcr.command(f"clear {USERNAME}")
                         mcr.command("kill @e[type=item]")
+                        # Register server-authoritative counters and record their
+                        # baseline so grading measures this episode's delta.
+                        for name, criterion, _, _ in stat_objs:
+                            mcr.command(f"scoreboard objectives add {name} {criterion}")
+                        for name, _, _, _ in stat_objs:
+                            stat_baseline[name] = _read_score(mcr, USERNAME, name)
                         run_commands(mcr, _setup_commands_for_agent(task.setup.commands, USERNAME))
                         mcr.command(f"gamemode survival {USERNAME}")
                         if recorder is not None:
                             mcr.command(f"tp {record.recorder_username} {USERNAME}")
                             mcr.command(f"spectate {USERNAME} {record.recorder_username}")
+                        # De-op the bot for the actual run so the agent can't cheat
+                        # via chat commands (e.g. /give, /kill). Setup ran as console
+                        # over RCON, which keeps full permissions regardless.
+                        mcr.command(f"deop {USERNAME}")
                 except Exception as e:
                     trace.append(
                         TraceEvent(kind="error", data={"msg": f"setup failed: {e}"})
@@ -218,7 +285,7 @@ def run_task(
             console.log("Capturing final state…")
             try:
                 with rcon_session(server.host, server.rcon_port, server.rcon_password) as mcr:
-                    trace.final_state = _snapshot_final_state(mcr, USERNAME)
+                    trace.final_state = _snapshot_final_state(mcr, USERNAME, stat_objs, stat_baseline)
                 final_state_captured = True
             except Exception as e:
                 trace.append(TraceEvent(kind="error", data={"msg": f"snapshot failed: {e}"}))
@@ -251,7 +318,7 @@ def run_task(
         console.log("Capturing final state…")
         try:
             with rcon_session(server.host, server.rcon_port, server.rcon_password) as mcr:
-                trace.final_state = _snapshot_final_state(mcr, USERNAME)
+                trace.final_state = _snapshot_final_state(mcr, USERNAME, stat_objs, stat_baseline)
         except Exception as e:  # don't fail the whole run because of a snapshot hiccup
             trace.append(TraceEvent(kind="error", data={"msg": f"snapshot failed: {e}"}))
 

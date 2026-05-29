@@ -82,6 +82,14 @@ class SubprocessAgent(Agent):
                 self.stop()
                 return
             if self.proc.poll() is not None and queue.empty():
+                if self.proc.returncode:
+                    yield TraceEvent(
+                        kind="error",
+                        data={
+                            "msg": f"agent exited with code {self.proc.returncode}",
+                            "stderr": self.stderr_log[-20:],
+                        },
+                    )
                 return
             try:
                 line = queue.get(timeout=min(0.5, remaining))
@@ -103,6 +111,10 @@ class SubprocessAgent(Agent):
             except subprocess.TimeoutExpired:
                 self.proc.kill()
         self.proc = None
+
+    @property
+    def stderr_log(self) -> list[str]:
+        return list(self._stderr_lines)
 
     def _drain_stdout(self, queue: Queue[str]) -> None:
         assert self.proc and self.proc.stdout

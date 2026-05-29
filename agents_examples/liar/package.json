@@ -1,0 +1,7 @@
+{
+  "name": "mcbench-liar",
+  "version": "0.1.0",
+  "description": "Adversarial probe: connects, does nothing, but emits fake achievement events. Must score 0 under server-authoritative grading.",
+  "main": "index.js",
+  "dependencies": { "mineflayer": "^4.20.0" }
+}

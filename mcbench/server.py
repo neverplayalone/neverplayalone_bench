@@ -88,16 +88,113 @@ def down() -> None:
     _compose("down", "-v")
 
 
+WORLD_DIRS = ("world", "world_nether", "world_the_end")
+
+
+def _wipe_world_dirs() -> None:
+    for sub in WORLD_DIRS:
+        target = DATA_DIR / sub
+        if target.exists():
+            shutil.rmtree(target, ignore_errors=True)
+
+
 def reset_world() -> None:
     """Wipe the world dir so the next `up` regenerates a fresh world.
 
     The server must be stopped first.
     """
     down()
-    for sub in ("world", "world_nether", "world_the_end"):
-        target = DATA_DIR / sub
-        if target.exists():
-            shutil.rmtree(target, ignore_errors=True)
+    _wipe_world_dirs()
+
+
+def wipe_player_data() -> None:
+    """Delete saved player data + statistics so bots rejoin fresh each run.
+
+    A bot that disconnects while dead (on the death screen) persists Health:0 in
+    its offline save; on the next run it loads already-dead, dies before it can
+    spawn, and the run silently fails. Wiping playerdata each reset prevents that
+    and also zeroes lifetime statistics, so the per-episode scoreboard counters
+    start from a clean baseline. Safe while the server runs: the bots are offline
+    during reset, so nothing holds these files open, and the server recreates the
+    player at world spawn (alive, full health) on next join. Advancements are left
+    intact so recipe unlocks survive.
+    """
+    world = DATA_DIR / "world"
+    for sub, pattern in (("playerdata", "*.dat*"), ("stats", "*.json")):
+        directory = world / sub
+        if not directory.exists():
+            continue
+        for f in directory.glob(pattern):
+            try:
+                f.unlink()
+            except OSError:
+                pass
+
+
+# Block layers of the generated FLAT world (LEVEL_TYPE=FLAT, 1.20.4):
+#   y=-64 bedrock, y=-63..-62 dirt, y=-61 grass_block, y>=-60 air.
+_FLAT_FLOOR_Y = -64
+_FLAT_SURFACE_Y = -61  # topmost solid layer (grass)
+# Max blocks a single /fill may affect (vanilla limit is 32768; stay under it).
+_FILL_MAX_VOLUME = 32000
+
+
+def _fill_box(
+    mcr,
+    p1: tuple[int, int, int],
+    p2: tuple[int, int, int],
+    block: str,
+) -> None:
+    """`/fill` a box, splitting into sub-boxes so each command stays under the volume limit."""
+    x1, x2 = sorted((p1[0], p2[0]))
+    y1, y2 = sorted((p1[1], p2[1]))
+    z1, z2 = sorted((p1[2], p2[2]))
+    nx, nz = x2 - x1 + 1, z2 - z1 + 1
+    layer = nx * nz
+    if layer <= _FILL_MAX_VOLUME:
+        dy = max(1, _FILL_MAX_VOLUME // layer)
+        for y in range(y1, y2 + 1, dy):
+            ye = min(y + dy - 1, y2)
+            mcr.command(f"fill {x1} {y} {z1} {x2} {ye} {z2} minecraft:{block}")
+        return
+    # Layer itself too large — split along x and recurse.
+    dx = max(1, _FILL_MAX_VOLUME // nz)
+    for x in range(x1, x2 + 1, dx):
+        xe = min(x + dx - 1, x2)
+        _fill_box(mcr, (x, y1, z1), (xe, y2, z2), block)
+
+
+def clean_world_inplace(
+    cfg: ServerConfig | None = None,
+    radius: int = 48,
+    ceiling: int = 64,
+) -> None:
+    """Reset the area around spawn to a pristine flat world without restarting.
+
+    Restarting the container costs ~2min here (JVM + Paper bootstrap dominate,
+    not downloads), so a full reset between runs is too slow. Instead we clean
+    in place over RCON: kill leftover entities/items and restore a bounded box
+    around spawn to the flat-world profile. This is near-instant and keeps runs
+    reproducible as long as the agent stays within `radius` of spawn (tasks here
+    operate within ~16 blocks of spawn, so the default leaves wide margin).
+
+    Also wipes saved player data so a dead bot can't poison later runs (see
+    wipe_player_data). The bot for this run hasn't connected yet, so its files
+    are safe to delete here.
+    """
+    cfg = cfg or ServerConfig()
+    r = radius
+    wipe_player_data()
+    with rcon_session(cfg.host, cfg.rcon_port, cfg.rcon_password) as mcr:
+        mcr.command(f"forceload add {-r} {-r} {r} {r}")
+        try:
+            mcr.command("kill @e[type=!minecraft:player]")
+            _fill_box(mcr, (-r, _FLAT_SURFACE_Y + 1, -r), (r, ceiling, r), "air")
+            _fill_box(mcr, (-r, _FLAT_FLOOR_Y, -r), (r, _FLAT_FLOOR_Y, r), "bedrock")
+            _fill_box(mcr, (-r, _FLAT_FLOOR_Y + 1, -r), (r, _FLAT_SURFACE_Y - 1, r), "dirt")
+            _fill_box(mcr, (-r, _FLAT_SURFACE_Y, -r), (r, _FLAT_SURFACE_Y, r), "grass_block")
+        finally:
+            mcr.command("forceload remove all")
 
 
 def is_running() -> bool:

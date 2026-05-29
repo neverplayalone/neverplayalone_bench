@@ -1,0 +1,37 @@
+id: stat_acceptance
+difficulty: simple
+goal: "Acceptance probe: place 3 oak_planks, mine 3 cobblestone, kill 2 zombies."
+
+setup:
+  world: flat
+  commands:
+    - /gamemode survival BenchmarkBot
+    - /gamerule doMobSpawning false
+    - /time set midnight
+    - /difficulty normal
+    - /kill @e[type=!minecraft:player]
+    - /give BenchmarkBot minecraft:iron_pickaxe 1
+    - /give BenchmarkBot minecraft:oak_planks 64
+    - /give BenchmarkBot minecraft:diamond_sword 1
+    - /item replace entity BenchmarkBot armor.head with minecraft:iron_helmet
+    - /item replace entity BenchmarkBot armor.chest with minecraft:iron_chestplate
+    - /item replace entity BenchmarkBot armor.legs with minecraft:iron_leggings
+    - /item replace entity BenchmarkBot armor.feet with minecraft:iron_boots
+    - /execute at BenchmarkBot run fill ~2 ~ ~2 ~4 ~ ~2 minecraft:cobblestone
+    - /execute at BenchmarkBot run summon minecraft:zombie ~2 ~ ~2 {Health:1f}
+    - /execute at BenchmarkBot run summon minecraft:zombie ~-2 ~ ~2 {Health:1f}
+
+timeout_seconds: 120
+
+success:
+  threshold: 1.0
+  rules:
+    - kind: blocks_placed
+      block: oak_planks
+      min_count: 3
+    - kind: blocks_broken
+      block: cobblestone
+      min_count: 3
+    - kind: entities_killed
+      entity: zombie
+      min_count: 2

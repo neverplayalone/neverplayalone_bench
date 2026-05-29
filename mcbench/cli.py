@@ -84,11 +84,18 @@ def replay_export_mcpr(packet_log: Path, output: Path | None) -> None:
 @click.option("--agent", "agent_path", required=True, type=click.Path(exists=True, path_type=Path))
 @click.option("--agent-name", default=None, help="Display name for the agent")
 @click.option("--record/--no-record", default=False, help="Record a ReplayMod-compatible packet replay")
+@click.option(
+    "--reset/--no-reset",
+    default=True,
+    help="Clean the spawn area before the run (prevents terrain/entities leaking across runs). "
+    "Use --no-reset to reuse the current world as-is.",
+)
 def run_cmd(
     task_path: Path,
     agent_path: Path,
     agent_name: str | None,
     record: bool,
+    reset: bool,
 ) -> None:
     """Run AGENT against TASK and grade the result."""
     task = load_task(task_path)
@@ -100,7 +107,7 @@ def run_cmd(
             target_username="BenchmarkBot",
         )
     try:
-        run_task(task, agent, record=rec_opts)
+        run_task(task, agent, record=rec_opts, reset=reset)
     except RuntimeError as e:
         raise click.ClickException(str(e)) from e
 

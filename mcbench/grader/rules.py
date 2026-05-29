@@ -2,17 +2,12 @@
 
 from __future__ import annotations
 
-from collections import Counter
 from typing import Callable
 
 from ..config import Rule
 from ..trace import Trace
 
 CheckFn = Callable[[Rule, Trace], tuple[bool, str]]
-
-
-def _events_with(trace: Trace, kind: str) -> list[dict]:
-    return [e.data for e in trace.events if e.kind == kind]
 
 
 def inventory_contains(rule: Rule, trace: Trace) -> tuple[bool, str]:
@@ -24,35 +19,26 @@ def inventory_contains(rule: Rule, trace: Trace) -> tuple[bool, str]:
 
 
 def blocks_broken(rule: Rule, trace: Trace) -> tuple[bool, str]:
-    """Count `dig` action events where data.block matches rule.block."""
+    """Server-authoritative count of blocks mined this episode (minecraft.mined stat)."""
     if not rule.block:
         return False, "rule missing 'block'"
-    broken = Counter()
-    for d in _events_with(trace, "action"):
-        if d.get("action") == "dig":
-            broken[d.get("block", "")] += 1
-    n = broken.get(rule.block, 0)
+    n = trace.final_state.blocks_broken.get(rule.block, 0)
     return n >= rule.min_count, f"broken[{rule.block}] = {n} (need ≥ {rule.min_count})"
 
 
 def blocks_placed(rule: Rule, trace: Trace) -> tuple[bool, str]:
+    """Server-authoritative count of blocks placed this episode (minecraft.used stat)."""
     if not rule.block:
         return False, "rule missing 'block'"
-    placed = Counter()
-    for d in _events_with(trace, "action"):
-        if d.get("action") == "place":
-            placed[d.get("block", "")] += 1
-    n = placed.get(rule.block, 0)
+    n = trace.final_state.blocks_placed.get(rule.block, 0)
     return n >= rule.min_count, f"placed[{rule.block}] = {n} (need ≥ {rule.min_count})"
 
 
 def entities_killed(rule: Rule, trace: Trace) -> tuple[bool, str]:
+    """Server-authoritative count of mobs killed this episode (minecraft.killed stat)."""
     if not rule.entity:
         return False, "rule missing 'entity'"
-    killed = Counter()
-    for d in _events_with(trace, "kill"):
-        killed[d.get("entity", "")] += 1
-    n = killed.get(rule.entity, 0)
+    n = trace.final_state.entities_killed.get(rule.entity, 0)
     return n >= rule.min_count, f"killed[{rule.entity}] = {n} (need ≥ {rule.min_count})"
 
 
