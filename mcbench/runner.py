@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import time
-import uuid
 from pathlib import Path
 
 from mcrcon import MCRcon
@@ -25,6 +25,7 @@ console = Console()
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 RESULTS_DIR = REPO_ROOT / "results"
+RECORDING_DIR = REPO_ROOT / "recording"
 
 USERNAME = "BenchmarkBot"
 
@@ -175,8 +176,12 @@ def run_task(
     reset: bool = True,
 ) -> Trace:
     server = server or ServerConfig()
-    run_id = f"{task.id}-{uuid.uuid4().hex[:8]}"
+    # Stable per-task dir: re-running a task overwrites its previous result
+    # rather than accumulating uuid-suffixed dirs. (Generated task ids already
+    # carry the seed, so distinct tasks never collide.)
+    run_id = task.id
     out_dir = RESULTS_DIR / run_id
+    shutil.rmtree(out_dir, ignore_errors=True)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     console.log(f"[bold cyan]Run[/]: {run_id}")
@@ -209,9 +214,13 @@ def run_task(
         if not ok:
             console.log(f"[yellow]Recording disabled[/]: {reason}")
         else:
+            # Packet stream + manifest are intermediates (kept in the task dir,
+            # pruned after a successful export); the .mcpr is gathered into a
+            # single top-level recording/ folder, named by task id.
             record.packet_output = out_dir / "packets.jsonl.gz"
             record.packet_manifest = out_dir / "packets.manifest.json"
-            record.replay_output = out_dir / "recording.mcpr"
+            RECORDING_DIR.mkdir(parents=True, exist_ok=True)
+            record.replay_output = RECORDING_DIR / f"{task.id}.mcpr"
             record.host = server.host
             record.port = server.game_port
             record.target_username = USERNAME
@@ -294,16 +303,22 @@ def run_task(
             console.log("Stopping recorder…")
             recorder.stop()
             if record and record.packet_output and record.packet_output.exists():
-                console.log(f"Packet log saved: {record.packet_output}")
-                if record.packet_manifest and record.packet_manifest.exists():
-                    console.log(f"Packet manifest saved: {record.packet_manifest}")
                 if record.replay_output:
                     try:
                         replay_path = export_mcpr(record.packet_output, output=record.replay_output)
                         console.log(f"ReplayMod recording saved: {replay_path}")
+                        # Export succeeded → drop the raw packet intermediates.
+                        record.packet_output.unlink(missing_ok=True)
+                        if record.packet_manifest:
+                            record.packet_manifest.unlink(missing_ok=True)
                     except Exception as e:
+                        # Keep the packet log so the user can retry `replay export-mcpr`.
                         trace.append(
                             TraceEvent(kind="error", data={"msg": f"replay export failed: {e}"})
+                        )
+                        console.log(
+                            f"[yellow]Export failed; kept packet log for retry: "
+                            f"{record.packet_output}[/]"
                         )
             else:
                 console.log("[yellow]Packet recording produced no output.[/]")

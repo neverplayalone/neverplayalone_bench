@@ -8,6 +8,7 @@ A run is fully described by a YAML config (commit it to pin/reproduce a suite).
 from __future__ import annotations
 
 import json
+import shutil
 from collections import defaultdict
 from pathlib import Path
 from typing import Literal, Union
@@ -20,7 +21,7 @@ from rich.table import Table
 from .agents import AgentSpec, SubprocessAgent
 from .config import TaskConfig, load_task
 from .grader import grade
-from .runner import run_task
+from .runner import RECORDING_DIR, RESULTS_DIR, run_task
 from .taskgen import STYLES, generate
 
 console = Console()
@@ -136,6 +137,13 @@ def run_bench(
     if not agent_path:
         raise ValueError("no agent specified — set `agent.path` in the config or pass --agent")
     agent_name = (cfg.agent.name if cfg.agent and cfg.agent.name else None) or Path(agent_path).name
+
+    # A round replaces the previous one: wipe results/ + recording/ so that when
+    # this bench finishes, those folders hold exactly this round's tasks (several
+    # same-style tasks with different seeds all coexist via their distinct ids).
+    shutil.rmtree(RESULTS_DIR, ignore_errors=True)
+    shutil.rmtree(RECORDING_DIR, ignore_errors=True)
+
     out = Path(out_dir or cfg.output)
     out.mkdir(parents=True, exist_ok=True)
 
