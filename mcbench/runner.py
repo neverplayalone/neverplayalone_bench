@@ -64,11 +64,23 @@ def _read_score(mcr: MCRcon, username: str, objective: str) -> int:
     return int(m.group(1)) if m else 0
 
 
+def _count_item(mcr: MCRcon, username: str, item: str) -> int:
+    """Authoritative count of an item in a player's inventory via `/clear ... 0`.
+
+    `clear` with a max-count of 0 removes nothing and reports how many matching
+    items the player has — far more reliable than regex-parsing the inventory SNBT.
+    """
+    raw = mcr.command(f"clear {username} minecraft:{item} 0")
+    m = re.search(r"\b(\d+)\b", raw)  # "Found N matching item(s) on player ..."
+    return int(m.group(1)) if (m and "found" in raw.lower()) else 0
+
+
 def _snapshot_final_state(
     mcr: MCRcon,
     username: str,
     stat_objs: list[tuple[str, str, str, str]],
     stat_baseline: dict[str, int],
+    inv_items: list[str] | None = None,
 ) -> FinalState:
     """Pull a final-state snapshot from the server via RCON."""
     state = FinalState()
@@ -83,9 +95,12 @@ def _snapshot_final_state(
     raw = mcr.command(f"data get entity {username} foodLevel")
     state.food = _parse_scalar(raw)
 
-    # Inventory
+    # Inventory: rough SNBT parse for context, then authoritative per-item counts
+    # for the items the task actually grades (inventory_contains rules).
     raw = mcr.command(f"data get entity {username} Inventory")
     state.inventory = _parse_inventory(raw)
+    for item in inv_items or []:
+        state.inventory[item] = _count_item(mcr, username, item)
 
     # Server-authoritative counters: episode delta = final stat - baseline at setup.
     # Statistic objectives mirror the player's lifetime stats, which persist across
@@ -174,6 +189,7 @@ def run_task(
     server: ServerConfig | None = None,
     record: RecordOptions | None = None,
     reset: bool = True,
+    expose_rules: bool = False,
 ) -> Trace:
     server = server or ServerConfig()
     # Stable per-task dir: re-running a task overwrites its previous result
@@ -199,6 +215,7 @@ def run_task(
 
     stat_objs = _stat_objectives(task)
     stat_baseline: dict[str, int] = {}
+    inv_items = [r.item for r in task.success.rules if r.kind == "inventory_contains" and r.item]
 
     # 1. World-level setup that doesn't depend on the player existing
     console.log("Setting world gamerules…")
@@ -247,6 +264,7 @@ def run_task(
         username=USERNAME,
         goal=task.goal,
         timeout_seconds=task.timeout_seconds,
+        rules=[r.model_dump() for r in task.success.rules] if expose_rules else None,
     )
 
     setup_done = False
@@ -267,8 +285,12 @@ def run_task(
                         mcr.command(f"clear {USERNAME}")
                         mcr.command("kill @e[type=item]")
                         # Register server-authoritative counters and record their
-                        # baseline so grading measures this episode's delta.
+                        # baseline so grading measures this episode's delta. Remove
+                        # then re-add each objective so it recomputes from the
+                        # player's current real statistic (avoids a stale value
+                        # carried over from a previous run desyncing the baseline).
                         for name, criterion, _, _ in stat_objs:
+                            mcr.command(f"scoreboard objectives remove {name}")
                             mcr.command(f"scoreboard objectives add {name} {criterion}")
                         for name, _, _, _ in stat_objs:
                             stat_baseline[name] = _read_score(mcr, USERNAME, name)
@@ -294,7 +316,7 @@ def run_task(
             console.log("Capturing final state…")
             try:
                 with rcon_session(server.host, server.rcon_port, server.rcon_password) as mcr:
-                    trace.final_state = _snapshot_final_state(mcr, USERNAME, stat_objs, stat_baseline)
+                    trace.final_state = _snapshot_final_state(mcr, USERNAME, stat_objs, stat_baseline, inv_items)
                 final_state_captured = True
             except Exception as e:
                 trace.append(TraceEvent(kind="error", data={"msg": f"snapshot failed: {e}"}))
@@ -333,7 +355,7 @@ def run_task(
         console.log("Capturing final state…")
         try:
             with rcon_session(server.host, server.rcon_port, server.rcon_password) as mcr:
-                trace.final_state = _snapshot_final_state(mcr, USERNAME, stat_objs, stat_baseline)
+                trace.final_state = _snapshot_final_state(mcr, USERNAME, stat_objs, stat_baseline, inv_items)
         except Exception as e:  # don't fail the whole run because of a snapshot hiccup
             trace.append(TraceEvent(kind="error", data={"msg": f"snapshot failed: {e}"}))
 

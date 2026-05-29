@@ -22,10 +22,13 @@ from .agents import AgentSpec, SubprocessAgent
 from .config import TaskConfig, load_task
 from .grader import grade
 from .recorder import RecordOptions
-from .runner import RECORDING_DIR, RESULTS_DIR, run_task
+from .runner import RECORDING_DIR, REPO_ROOT, RESULTS_DIR, run_task
 from .taskgen import STYLES, generate
 
 console = Console()
+
+# Built-in solver used by `mcbench bench --valid` to confirm tasks are solvable.
+ORACLE_AGENT = REPO_ROOT / "agents_examples" / "oracle"
 
 
 class AgentRef(BaseModel):
@@ -113,12 +116,13 @@ def _aggregate(rows: list[dict]) -> dict:
     return {"overall": overall, "by_category": group("category"), "by_style": group("style")}
 
 
-def _print_report(agent_name: str, summary: dict) -> None:
+def _print_report(agent_name: str, summary: dict, valid_mode: bool = False) -> None:
+    rate_label = "valid rate" if valid_mode else "pass rate"
     for title, key in (("By category", "by_category"), ("By style", "by_style")):
-        table = Table(title=f"{title} — agent: {agent_name}")
+        table = Table(title=f"{title} — {'validation' if valid_mode else 'agent'}: {agent_name}")
         table.add_column(title.split()[-1].capitalize())
         table.add_column("n", justify="right")
-        table.add_column("pass rate", justify="right")
+        table.add_column(rate_label, justify="right")
         table.add_column("mean score", justify="right")
         for name, s in summary[key].items():
             table.add_row(name, str(s["n"]), f"{s['pass_rate']:.0%}", f"{s['mean_score']:.2f}")
@@ -126,7 +130,7 @@ def _print_report(agent_name: str, summary: dict) -> None:
     o = summary["overall"]
     console.print(
         f"[bold]Overall[/]: {o['n']} tasks | "
-        f"pass rate {o['pass_rate']:.0%} | mean score {o['mean_score']:.2f}"
+        f"{rate_label} {o['pass_rate']:.0%} | mean score {o['mean_score']:.2f}"
     )
 
 
@@ -134,19 +138,30 @@ def run_bench(
     cfg: BenchConfig,
     agent_path: str | None = None,
     out_dir: str | Path | None = None,
+    valid_mode: bool = False,
 ) -> dict:
-    agent_path = agent_path or (cfg.agent.path if cfg.agent else None)
-    if not agent_path:
-        raise ValueError("no agent specified — set `agent.path` in the config or pass --agent")
-    agent_name = (cfg.agent.name if cfg.agent and cfg.agent.name else None) or Path(agent_path).name
+    # In validation mode the agent is always the built-in oracle, which is given
+    # the success rule and directly performs the task — a "pass" means the task is
+    # solvable (valid). Recording is forced on so each task can be eyeballed.
+    if valid_mode:
+        agent_path = str(ORACLE_AGENT)
+        agent_name = "oracle"
+    else:
+        agent_path = agent_path or (cfg.agent.path if cfg.agent else None)
+        if not agent_path:
+            raise ValueError("no agent specified — set `agent.path` in the config or pass --agent")
+        agent_name = (cfg.agent.name if cfg.agent and cfg.agent.name else None) or Path(agent_path).name
+
+    record_on = valid_mode or cfg.defaults.record
+    summary_name = "validation_summary.json" if valid_mode else "bench_summary.json"
 
     # Both folders are static (always exist); a round replaces their contents.
     # results/ is always cleared so it holds exactly this round's tasks.
-    # recording/ is only cleared when this round actually records (record: true),
-    # so a non-recording round doesn't throw away a prior recorded run's replays.
+    # recording/ is only cleared when this round actually records, so a
+    # non-recording round doesn't throw away a prior recorded run's replays.
     shutil.rmtree(RESULTS_DIR, ignore_errors=True)
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    if cfg.defaults.record:
+    if record_on:
         shutil.rmtree(RECORDING_DIR, ignore_errors=True)
     RECORDING_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -154,7 +169,8 @@ def run_bench(
     out.mkdir(parents=True, exist_ok=True)
 
     tasks = build_suite(cfg)
-    console.log(f"[bold cyan]Bench[/]: {len(tasks)} tasks | agent [bold]{agent_name}[/]")
+    mode = "Validate" if valid_mode else "Bench"
+    console.log(f"[bold cyan]{mode}[/]: {len(tasks)} tasks | agent [bold]{agent_name}[/]")
 
     rows: list[dict] = []
     for idx, task in enumerate(tasks, 1):
@@ -162,8 +178,10 @@ def run_bench(
         outcome, score = "error", 0.0
         try:
             agent = SubprocessAgent(AgentSpec(name=agent_name, path=str(agent_path)))
-            rec = RecordOptions(target_username="BenchmarkBot") if cfg.defaults.record else None
-            trace = run_task(task, agent, reset=cfg.defaults.reset, record=rec)
+            rec = RecordOptions(target_username="BenchmarkBot") if record_on else None
+            trace = run_task(
+                task, agent, reset=cfg.defaults.reset, record=rec, expose_rules=valid_mode
+            )
             report = grade(task, trace)
             outcome, score = report["outcome"], float(report["score"])
         except Exception as e:  # one bad task shouldn't abort the whole suite
@@ -178,9 +196,17 @@ def run_bench(
         })
 
     summary = _aggregate(rows)
-    (out / "bench_summary.json").write_text(
-        json.dumps({"agent": agent_name, "tasks": rows, "summary": summary}, indent=2)
+    (out / summary_name).write_text(
+        json.dumps({"agent": agent_name, "valid_mode": valid_mode, "tasks": rows, "summary": summary}, indent=2)
     )
-    _print_report(agent_name, summary)
-    console.log(f"Summary written: {out / 'bench_summary.json'}")
+    _print_report(agent_name, summary, valid_mode)
+    if valid_mode:
+        suspect = [r["id"] for r in rows if r["outcome"] != "pass"]
+        if suspect:
+            console.print(f"[yellow]Suspect tasks (oracle did not solve — review):[/] {len(suspect)}")
+            for tid in suspect:
+                console.print(f"  - {tid}")
+        else:
+            console.print("[green]All tasks solved by the oracle — suite looks valid.[/]")
+    console.log(f"Summary written: {out / summary_name}")
     return summary

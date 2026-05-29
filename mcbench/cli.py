@@ -170,7 +170,20 @@ def taskgen_cmd(
     help="Override the agent in the config (the field you swap most often)",
 )
 @click.option("--out", "out_override", type=click.Path(path_type=Path), default=None)
-def bench_cmd(config_path: Path, agent_override: Path | None, out_override: Path | None) -> None:
+@click.option(
+    "--valid",
+    "valid_mode",
+    is_flag=True,
+    default=False,
+    help="Validation mode: solve each task with the built-in oracle (records each) to "
+    "confirm the generated tasks are solvable. Ignores --agent.",
+)
+def bench_cmd(
+    config_path: Path,
+    agent_override: Path | None,
+    out_override: Path | None,
+    valid_mode: bool,
+) -> None:
     """Run a config-defined benchmark suite and print an aggregate report."""
     from .bench import load_bench_config, run_bench
 
@@ -182,6 +195,7 @@ def bench_cmd(config_path: Path, agent_override: Path | None, out_override: Path
             cfg,
             agent_path=str(agent_override) if agent_override else None,
             out_dir=out_override,
+            valid_mode=valid_mode,
         )
     except (ValueError, RuntimeError) as e:
         raise click.ClickException(str(e)) from e
