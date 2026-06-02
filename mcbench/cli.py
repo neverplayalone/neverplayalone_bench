@@ -220,6 +220,7 @@ def bench_cmd(
 @click.option("--base-game-port", type=int, default=25565)
 @click.option("--base-rcon-port", type=int, default=25575)
 @click.option("--out", "out_dir", type=click.Path(path_type=Path), default=None)
+@click.option("--record/--no-record", default=False, help="Record a ReplayMod-compatible packet replay")
 @click.option(
     "--keep-server/--stop-server",
     default=False,
@@ -233,6 +234,7 @@ def resource_gather_cmd(
     base_game_port: int,
     base_rcon_port: int,
     out_dir: Path | None,
+    record: bool,
     keep_server: bool,
 ) -> None:
     """Run one resource-gathering competition evaluation slot."""
@@ -250,6 +252,9 @@ def resource_gather_cmd(
         base_game_port=base_game_port,
         base_rcon_port=base_rcon_port,
     )
+    rec_opts: RecordOptions | None = None
+    if record:
+        rec_opts = RecordOptions(target_username=cfg.username)
     try:
         run_resource_gathering_competition(
             cfg,
@@ -257,6 +262,7 @@ def resource_gather_cmd(
             slot=slot,
             out_dir=out_dir,
             keep_server=keep_server,
+            record=rec_opts,
         )
     except (ValueError, RuntimeError) as e:
         raise click.ClickException(str(e)) from e

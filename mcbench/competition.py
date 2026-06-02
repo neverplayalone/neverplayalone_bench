@@ -23,7 +23,9 @@ from rich.console import Console
 
 from .agents import Agent
 from .agents.base import AgentRunContext
+from .recorder import Recorder, RecordOptions, is_available as recorder_available, wait_for_settle
 from .rcon import rcon_session
+from .replay_tool import export_mcpr
 from .server import DOCKER_DIR, REPO_ROOT, ServerConfig, wait_for_ready
 from .trace import FinalState, Trace, TraceEvent
 
@@ -148,6 +150,7 @@ def run_resource_gathering_competition(
     slot: CompetitionSlot | None = None,
     out_dir: str | Path | None = None,
     keep_server: bool = False,
+    record: RecordOptions | None = None,
 ) -> dict[str, Any]:
     slot = slot or CompetitionSlot()
     run_id = f"{cfg.id}__{agent.spec.name}__seed{cfg.seed}__slot{slot.slot_id}"
@@ -160,6 +163,8 @@ def run_resource_gathering_competition(
     timed_out = False
     death_baseline = 0
     slot_started = False
+    recorder: Recorder | None = None
+    final_snapshot: dict[str, Any] | None = None
 
     try:
         console.log(
@@ -172,6 +177,33 @@ def run_resource_gathering_competition(
             server = slot.server_config()
             wait_for_ready(server, timeout=600)
             _configure_world_start(server, cfg)
+
+            if record is not None:
+                ok, reason = recorder_available()
+                if not ok:
+                    console.log(f"[yellow]Recording disabled[/]: {reason}")
+                    trace.append(TraceEvent(kind="info", data={"msg": "recording disabled", "reason": reason}))
+                else:
+                    record.packet_output = output / "packets.jsonl.gz"
+                    record.packet_manifest = output / "packets.manifest.json"
+                    record.replay_output = output / "recording.mcpr"
+                    record.host = server.host
+                    record.port = server.game_port
+                    record.target_username = cfg.username
+                    recorder = Recorder(record)
+                    console.log(f"Starting packet recorder -> {record.packet_output}")
+                    recorder.start()
+                    wait_for_settle(2.5)
+                    try:
+                        with rcon_session(
+                            server.host, server.rcon_port, server.rcon_password
+                        ) as mcr:
+                            mcr.command(f"op {record.recorder_username}")
+                            mcr.command(f"gamemode spectator {record.recorder_username}")
+                    except Exception as e:
+                        trace.append(
+                            TraceEvent(kind="error", data={"msg": f"recorder setup failed: {e}"})
+                        )
 
             ctx = AgentRunContext(
                 host=server.host,
@@ -193,6 +225,9 @@ def run_resource_gathering_competition(
                         server.host, server.rcon_port, server.rcon_password
                     ) as mcr:
                         death_baseline = _setup_competitor(mcr, cfg)
+                        if recorder is not None and record is not None:
+                            mcr.command(f"tp {record.recorder_username} {cfg.username}")
+                            mcr.command(f"spectate {cfg.username} {record.recorder_username}")
                     setup_done = True
                 if event.kind == "done":
                     console.log("Agent reported done.")
@@ -200,17 +235,51 @@ def run_resource_gathering_competition(
         finally:
             trace.ended_at = time.time()
             trace.timed_out = timed_out
+            if setup_done:
+                console.log("Capturing competition final state...")
+                try:
+                    with rcon_session(slot.host, slot.rcon_port, slot.rcon_password) as mcr:
+                        final_snapshot = _capture_final_snapshot(mcr, cfg, death_baseline)
+                        trace.final_state = final_snapshot["final_state"]
+                except Exception as e:
+                    final_snapshot = {
+                        "error": f"snapshot failed: {e}",
+                        "deaths": 0,
+                        "alive": False,
+                    }
+                    trace.append(TraceEvent(kind="error", data=final_snapshot))
             agent.stop()
+            if recorder is not None and record is not None:
+                console.log("Stopping recorder...")
+                recorder.stop()
+                if record.packet_output and record.packet_output.exists():
+                    try:
+                        replay_path = export_mcpr(record.packet_output, output=record.replay_output)
+                        console.log(f"ReplayMod recording saved: {replay_path}")
+                    except Exception as e:
+                        trace.append(
+                            TraceEvent(kind="error", data={"msg": f"replay export failed: {e}"})
+                        )
+                        console.log(
+                            f"[yellow]Replay export failed; kept packet log: {record.packet_output}[/]"
+                        )
+                else:
+                    trace.append(TraceEvent(kind="error", data={"msg": "packet recording produced no output"}))
+                    console.log("[yellow]Packet recording produced no output.[/]")
+                    if recorder.stderr_log:
+                        console.log("[yellow]Recorder stderr (tail):[/]")
+                        for line in recorder.stderr_log[-40:]:
+                            console.log(f"  {line}")
 
-        console.log("Capturing competition final state...")
-        final_snapshot: dict[str, Any]
-        try:
-            with rcon_session(slot.host, slot.rcon_port, slot.rcon_password) as mcr:
-                final_snapshot = _capture_final_snapshot(mcr, cfg, death_baseline)
-                trace.final_state = final_snapshot["final_state"]
-        except Exception as e:
-            final_snapshot = {"error": f"snapshot failed: {e}", "deaths": 0, "alive": False}
-            trace.append(TraceEvent(kind="error", data=final_snapshot))
+        if final_snapshot is None:
+            console.log("Capturing competition final state...")
+            try:
+                with rcon_session(slot.host, slot.rcon_port, slot.rcon_password) as mcr:
+                    final_snapshot = _capture_final_snapshot(mcr, cfg, death_baseline)
+                    trace.final_state = final_snapshot["final_state"]
+            except Exception as e:
+                final_snapshot = {"error": f"snapshot failed: {e}", "deaths": 0, "alive": False}
+                trace.append(TraceEvent(kind="error", data=final_snapshot))
 
         report = score_resource_gathering(cfg, trace, final_snapshot)
         (output / "trace.json").write_text(trace.model_dump_json(indent=2))
