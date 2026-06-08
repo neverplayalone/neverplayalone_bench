@@ -32,7 +32,7 @@ Inspired by [MCU](https://arxiv.org/abs/2310.08367), but focused on production-r
               └───────────────┘
 ```
 
-The harness is agent-agnostic: any process that can connect to a Minecraft server as a player can be benchmarked. The reference example is a Node.js mineflayer agent driven over stdio.
+The harness is agent-agnostic: any process that can connect to a Minecraft server as a player can be benchmarked. The reference example is a Node.js mineflayer log-gathering agent driven over stdio.
 
 ## Quick start
 
@@ -40,14 +40,12 @@ The harness is agent-agnostic: any process that can connect to a Minecraft serve
 # install
 pip install -e .
 
-# bring up an ephemeral Paper server
-mcbench server up
+# run a generated resource-gathering challenge with the example agent
+mcbench resource-gather \
+            --seed 42 \
+            --agent log_gatherer=agents_examples/log_gatherer
 
-# run a task with the example agent
-mcbench run --task tasks/simple/chop_oak_log.yaml \
-            --agent agents_examples/random_walker
-
-# results land in results/<run_id>/
+# results land in results/resource_gathering/
 ```
 
 ## Task format
@@ -102,8 +100,9 @@ process joins as a second account (`RecorderCam`), spectates the agent, records
 the Minecraft protocol stream, and exports it to `.mcpr`.
 
 ```bash
-mcbench run --task tasks/simple/chop_oak_log.yaml \
-            --agent agents_examples/random_walker \
+mcbench resource-gather \
+            --seed 42 \
+            --agent log_gatherer=agents_examples/log_gatherer \
             --record
 ```
 

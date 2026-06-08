@@ -175,8 +175,7 @@ def taskgen_cmd(
     "valid_mode",
     is_flag=True,
     default=False,
-    help="Validation mode: solve each task with the built-in oracle (records each) to "
-    "confirm the generated tasks are solvable. Ignores --agent.",
+    help="Validation mode: expose success rules to the selected agent and record each task.",
 )
 def bench_cmd(
     config_path: Path,

@@ -22,14 +22,10 @@ from .agents import AgentSpec, SubprocessAgent
 from .config import TaskConfig, load_task
 from .grader import grade
 from .recorder import RecordOptions
-from .runner import RECORDING_DIR, REPO_ROOT, RESULTS_DIR, run_task
+from .runner import RECORDING_DIR, RESULTS_DIR, run_task
 from .taskgen import STYLES, generate
 
 console = Console()
-
-# Built-in solver used by `mcbench bench --valid` to confirm tasks are solvable.
-ORACLE_AGENT = REPO_ROOT / "agents_examples" / "oracle"
-
 
 class AgentRef(BaseModel):
     path: str
@@ -140,12 +136,14 @@ def run_bench(
     out_dir: str | Path | None = None,
     valid_mode: bool = False,
 ) -> dict:
-    # In validation mode the agent is always the built-in oracle, which is given
-    # the success rule and directly performs the task — a "pass" means the task is
-    # solvable (valid). Recording is forced on so each task can be eyeballed.
+    # In validation mode the selected agent receives the success rules, so a
+    # pass means the task is solvable by that validation agent. Recording is
+    # forced on so each task can be reviewed.
     if valid_mode:
-        agent_path = str(ORACLE_AGENT)
-        agent_name = "oracle"
+        agent_path = agent_path or (cfg.agent.path if cfg.agent else None)
+        if not agent_path:
+            raise ValueError("validation mode requires `agent.path` in the config or --agent")
+        agent_name = (cfg.agent.name if cfg.agent and cfg.agent.name else None) or Path(agent_path).name
     else:
         agent_path = agent_path or (cfg.agent.path if cfg.agent else None)
         if not agent_path:
@@ -203,10 +201,10 @@ def run_bench(
     if valid_mode:
         suspect = [r["id"] for r in rows if r["outcome"] != "pass"]
         if suspect:
-            console.print(f"[yellow]Suspect tasks (oracle did not solve — review):[/] {len(suspect)}")
+            console.print(f"[yellow]Suspect tasks (validation agent did not solve — review):[/] {len(suspect)}")
             for tid in suspect:
                 console.print(f"  - {tid}")
         else:
-            console.print("[green]All tasks solved by the oracle — suite looks valid.[/]")
+            console.print("[green]All tasks solved by the validation agent — suite looks valid.[/]")
     console.log(f"Summary written: {out / summary_name}")
     return summary
