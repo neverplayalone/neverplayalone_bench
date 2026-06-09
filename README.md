@@ -51,17 +51,17 @@ challenge from the catalog and seed. Example:
 {
   "resource": "logs",
   "target_count": 64,
-  "goal": "Before sunset, gather 64 logs and store it in the barrel at the spawn point."
+  "goal": "Before sunset, gather 64 logs. Keep the items in your inventory and finish within 20 blocks of spawn."
 }
 ```
 
-Only resources stored in the spawn barrel are counted. Resources remaining in
-the miner inventory do not score.
+Only resources in the miner inventory are counted, and they only score when the
+miner finishes within 20 horizontal blocks of the selected spawn position.
 
 Score:
 
 ```text
-min(stored_count, target_count) / target_count * points
+min(inventory_count, target_count) / target_count * points
 ```
 
 ## Outputs

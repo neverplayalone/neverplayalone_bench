@@ -31,7 +31,7 @@ class ResourceBatchTest(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertIn(first.resource, catalog.resources)
         self.assertIn(str(first.target_count), first.goal)
-        self.assertIn("barrel at the spawn point", first.goal)
+        self.assertIn("within 20 blocks of spawn", first.goal)
 
     def test_challenge_converts_to_single_target_competition_config(self) -> None:
         catalog = ResourceCatalog(

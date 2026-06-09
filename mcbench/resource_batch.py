@@ -157,8 +157,8 @@ def generate_challenge(
     display_name = entry.display_name or resource.replace("_", " ")
     challenge_id = challenge_id or f"resource_{seed}_{resource}_{target_count}"
     goal = (
-        f"Before sunset, gather {target_count} {display_name} "
-        "and store it in the barrel at the spawn point."
+        f"Before sunset, gather {target_count} {display_name}. "
+        "Keep the items in your inventory and finish within 20 blocks of spawn."
     )
     return GeneratedChallenge(
         challenge_id=challenge_id,
@@ -184,7 +184,11 @@ class WorldTemplateBuilder:
     def __init__(self, slot: CompetitionSlot):
         self.slot = slot
 
-    def build(self, cfg: ResourceCompetitionConfig, output_dir: Path) -> Path:
+    def build(
+        self,
+        cfg: ResourceCompetitionConfig,
+        output_dir: Path,
+    ) -> Path:
         output_dir = output_dir.resolve()
         shutil.rmtree(output_dir, ignore_errors=True)
         output_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -198,7 +202,10 @@ class WorldTemplateBuilder:
             wait_for_ready(server, timeout=600)
             _configure_world_start(server, cfg)
             with rcon_session(
-                server.host, server.rcon_port, server.rcon_password
+                server.host,
+                server.rcon_port,
+                server.rcon_password,
+                socket_timeout=20,
             ) as mcr:
                 mcr.command("save-all flush")
         finally:
@@ -321,9 +328,6 @@ def create_evaluation_batch(
 def run_evaluation_batch(batch: EvaluationBatch, record: bool = False) -> dict[str, Any]:
     cfg = batch.challenge.to_competition_config(batch.base_config)
     batch.output_dir.mkdir(parents=True, exist_ok=True)
-    (batch.output_dir / "generated_challenge.json").write_text(
-        batch.challenge.model_dump_json(indent=2)
-    )
     template_slot = CompetitionSlot(
         slot_id=999,
         base_game_port=batch.slots[0].slot.base_game_port,
