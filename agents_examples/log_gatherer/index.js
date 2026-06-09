@@ -1,8 +1,8 @@
 // Reference agent for the resource-gathering validator path.
 //
-// It gathers standard overworld logs and deposits them into the barrel placed at
-// the spawn point. This is intentionally simple: it is a baseline for verifying
-// the storage-based scoring path, not a competitive miner.
+// It gathers standard overworld logs, keeps them in inventory, and returns near
+// spawn before finishing. This is intentionally simple: it is a baseline for
+// verifying the resource-gathering scoring path, not a competitive miner.
 
 const mineflayer = require('mineflayer');
 const { pathfinder, Movements, goals } = require('mineflayer-pathfinder');
@@ -68,28 +68,6 @@ async function waitForKit(bot) {
   return false;
 }
 
-function findStorageBarrel(bot, mcData) {
-  const barrel = mcData.blocksByName.barrel;
-  if (!barrel) return null;
-  const positions = bot.findBlocks({
-    matching: barrel.id,
-    maxDistance: 12,
-    count: 16,
-  });
-  if (!positions.length) return null;
-  positions.sort((a, b) => a.distanceTo(bot.entity.position) - b.distanceTo(bot.entity.position));
-  return positions[0];
-}
-
-async function waitForStorageBarrel(bot, mcData) {
-  for (let i = 0; i < 120; i += 1) {
-    const pos = findStorageBarrel(bot, mcData);
-    if (pos) return pos;
-    await safeWait(bot, 2);
-  }
-  return null;
-}
-
 async function equipAxe(bot) {
   const axe = bot.inventory.items().find((item) => item.name.endsWith('_axe'));
   if (!axe) return false;
@@ -137,29 +115,16 @@ async function collectNearbyDrops(bot) {
   }
 }
 
-async function depositLogs(bot, storagePos) {
-  const logs = bot.inventory.items().filter(isLogItem);
-  if (!logs.length) return 0;
+async function returnToSpawn(bot, spawnPos) {
+  if (!spawnPos) return false;
   try {
-    await bot.pathfinder.goto(new goals.GoalNear(storagePos.x, storagePos.y, storagePos.z, 2));
-    const barrel = bot.blockAt(storagePos);
-    if (!barrel || barrel.name !== 'barrel') {
-      emit('error', { msg: 'storage barrel missing', pos: storagePos });
-      return 0;
-    }
-    const container = await bot.openContainer(barrel);
-    let deposited = 0;
-    for (const item of bot.inventory.items().filter(isLogItem)) {
-      await container.deposit(item.type, null, item.count);
-      deposited += item.count;
-    }
-    container.close();
-    emit('action', { action: 'deposit_logs', count: deposited, pos: storagePos });
+    await bot.pathfinder.goto(new goals.GoalNear(spawnPos.x, spawnPos.y, spawnPos.z, 8));
+    emit('action', { action: 'return_to_spawn', pos: spawnPos });
     await safeWait(bot, 5);
-    return deposited;
+    return true;
   } catch (e) {
-    emit('error', { msg: 'deposit failed', err: String(e) });
-    return 0;
+    emit('error', { msg: 'return to spawn failed', err: String(e) });
+    return false;
   }
 }
 
@@ -189,7 +154,6 @@ const targetCount = targetFromGoal(goalText);
 const deadline = Date.now() + Math.max(1, timeoutSec - 30) * 1000;
 let finished = false;
 let mined = 0;
-let depositedTotal = 0;
 let stopRequested = false;
 
 function finish(reason) {
@@ -200,7 +164,7 @@ function finish(reason) {
   emit('done', {
     msg: reason,
     mined,
-    deposited: depositedTotal,
+    gathered: countInventoryLogs(bot),
     inventory: inventorySummary(bot),
   });
 }
@@ -213,22 +177,15 @@ bot.once('spawn', async () => {
   bot.pathfinder.setMovements(movements);
 
   const kitReady = await waitForKit(bot);
-  const storagePos = await waitForStorageBarrel(bot, mcData);
-  emit('info', { msg: 'spawned', kitReady, storageReady: Boolean(storagePos), storagePos });
+  const spawnPos = bot.entity.position.clone();
+  emit('info', { msg: 'spawned', kitReady, spawnPos });
   setTimeout(() => finish('time budget exhausted'), Math.max(1, timeoutSec - 30) * 1000);
 
-  if (!storagePos) {
-    finish('storage barrel not found');
-    return;
-  }
-
   while (!stopRequested && Date.now() < deadline - 1000) {
-    if (countInventoryLogs(bot) >= Math.min(16, targetCount)) {
-      depositedTotal += await depositLogs(bot, storagePos);
-      if (depositedTotal >= targetCount) {
-        finish('target stored');
-        return;
-      }
+    if (countInventoryLogs(bot) >= targetCount) {
+      await returnToSpawn(bot, spawnPos);
+      finish('target gathered');
+      return;
     }
 
     const block = findNearestLog(bot, mcData);
@@ -251,7 +208,7 @@ bot.once('spawn', async () => {
     }
   }
 
-  depositedTotal += await depositLogs(bot, storagePos);
+  await returnToSpawn(bot, spawnPos);
   finish('time budget exhausted');
 });
 

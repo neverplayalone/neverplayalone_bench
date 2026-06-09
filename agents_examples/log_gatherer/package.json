@@ -1,7 +1,7 @@
 {
   "name": "mcbench-log-gatherer",
   "version": "0.1.0",
-  "description": "Reference resource-gathering agent: gathers logs and deposits them into the spawn barrel.",
+  "description": "Reference resource-gathering agent: gathers logs and returns near spawn with them in inventory.",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"

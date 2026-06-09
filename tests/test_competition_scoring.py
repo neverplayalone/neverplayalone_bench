@@ -8,8 +8,8 @@ from mcbench.competition import (
     KitItem,
     ResourceCompetitionConfig,
     ResourceTarget,
-    _count_item_stacks,
     _kit_item_stack,
+    _prepare_playable_spawn,
     score_resource_gathering,
 )
 from mcbench.trace import FinalState, Trace, TraceEvent
@@ -28,6 +28,23 @@ def _config() -> ResourceCompetitionConfig:
             efficiency_min_resource_score=100,
         ),
     )
+
+
+class FakeRcon:
+    def __init__(self):
+        self.commands: list[str] = []
+        self.blocks: dict[tuple[int, int, int], str] = {}
+
+    def command(self, command: str) -> str:
+        self.commands.append(command)
+        if command == "data get entity BenchmarkBot Pos":
+            return "BenchmarkBot has the following entity data: [12.3d, 72.0d, -8.8d]"
+        if command.startswith("execute if block "):
+            parts = command.split()
+            pos = (int(parts[3]), int(parts[4]), int(parts[5]))
+            block = parts[6]
+            return "The time is 12345" if self.blocks.get(pos, "minecraft:air") == block else "Test failed"
+        return ""
 
 
 class CompetitionScoringTest(unittest.TestCase):
@@ -85,16 +102,18 @@ class CompetitionScoringTest(unittest.TestCase):
         self.assertEqual(report["resource_score"], 100)
         self.assertEqual(report["resources"][0]["count"], 30)
 
-    def test_count_item_stacks_parses_spawn_storage_contents(self) -> None:
-        raw = (
-            'Block data: [{Slot: 0b, count: 64, id: "minecraft:oak_log"}, '
-            '{Slot: 1b, count: 12, id: "minecraft:birch_log"}, '
-            '{Slot: 2b, count: 3, id: "minecraft:oak_log"}]'
-        )
+    def test_playable_spawn_teleports_without_placing_block(self) -> None:
+        mcr = FakeRcon()
+        mcr.blocks[(12, 71, -9)] = "minecraft:grass_block"
 
-        self.assertEqual(_count_item_stacks(raw, "oak_log"), 67)
-        self.assertEqual(_count_item_stacks(raw, "birch_log"), 12)
-        self.assertEqual(_count_item_stacks(raw, "coal"), 0)
+        spawn_pos = _prepare_playable_spawn(mcr, "BenchmarkBot")
+
+        self.assertEqual(spawn_pos, (12, 72, -9))
+        self.assertIn("gamerule spawnRadius 0", mcr.commands)
+        self.assertIn("setworldspawn 12 72 -9", mcr.commands)
+        self.assertIn("spawnpoint BenchmarkBot 12 72 -9", mcr.commands)
+        self.assertIn("tp BenchmarkBot 12.5 72 -8.5 0 0", mcr.commands)
+        self.assertFalse(any(command.startswith("setblock ") for command in mcr.commands))
 
     def test_scores_target_count_and_survival(self) -> None:
         cfg = _config()
@@ -109,6 +128,30 @@ class CompetitionScoringTest(unittest.TestCase):
         self.assertEqual(report["survival_score"], 50)
         self.assertEqual(report["efficiency_score"], 0)
         self.assertEqual(report["score"], 100)
+
+    def test_resources_do_not_score_when_agent_finishes_far_from_spawn(self) -> None:
+        cfg = _config()
+        trace = Trace(challenge_id=cfg.id, agent_name="agent", started_at=time.time() - 1200)
+        trace.ended_at = time.time()
+        trace.timed_out = True
+        trace.final_state = FinalState(inventory={"oak_log": 64}, health=20)
+
+        report = score_resource_gathering(
+            cfg,
+            trace,
+            {
+                "alive": True,
+                "deaths": 0,
+                "distance_from_spawn": 21.0,
+                "return_radius": 20.0,
+                "within_return_radius": False,
+            },
+        )
+
+        self.assertEqual(report["resources"][0]["count"], 64)
+        self.assertEqual(report["resources"][0]["achieved"], 0)
+        self.assertEqual(report["resource_score"], 0)
+        self.assertFalse(report["within_return_radius"])
 
     def test_efficiency_bonus_requires_early_done_and_resource_floor(self) -> None:
         cfg = _config()
