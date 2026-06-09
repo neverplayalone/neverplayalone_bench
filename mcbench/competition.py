@@ -331,6 +331,11 @@ def run_resource_gathering_competition(
         (output / "score.json").write_text(json.dumps(report, indent=2))
         (output / "config.json").write_text(cfg.model_dump_json(indent=2))
 
+        if not setup_done:
+            console.log(
+                "[yellow]Agent never reported `ready`[/]: no kit/spawn setup ran. "
+                "Score reflects a failed agent, not a poor strategy."
+            )
         console.log(
             f"[bold green]Score[/]: {report['score']:.1f} / {report['max_score']:.1f}"
         )
@@ -404,12 +409,18 @@ def score_resource_gathering(
         else 0.0
     )
 
+    # An agent that never reported `ready` never had its kit/spawn setup applied,
+    # so a score of 0 means a broken agent, not a poor strategy. agent_ready_at is
+    # stamped on exactly that event, so it doubles as the spawned flag.
+    spawned = trace.agent_ready_at is not None
     return {
         "competition_id": cfg.id,
         "agent": trace.agent_name,
         "seed": cfg.seed,
         "score": total,
         "max_score": max_score,
+        "spawned": spawned,
+        "status": "ok" if spawned else "agent_never_spawned",
         "resource_score": resource_score,
         "distance_multiplier": distance_multiplier,
         "time_efficiency": time_efficiency,

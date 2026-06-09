@@ -213,6 +213,35 @@ class CompetitionScoringTest(unittest.TestCase):
         self.assertGreater(report["time_efficiency"], 0)
         self.assertAlmostEqual(report["time_efficiency"], 0.75, delta=0.02)
 
+    def test_status_ok_when_agent_spawned(self) -> None:
+        cfg = _config()
+        now = time.time()
+        trace = Trace(
+            challenge_id=cfg.id, agent_name="agent", started_at=now - 100, agent_ready_at=now - 95
+        )
+        trace.ended_at = now
+        trace.timed_out = True
+        trace.final_state = FinalState(inventory={"oak_log": 10}, health=20)
+
+        report = score_resource_gathering(cfg, trace, {"alive": True, "deaths": 0})
+
+        self.assertTrue(report["spawned"])
+        self.assertEqual(report["status"], "ok")
+
+    def test_status_flags_agent_that_never_spawned(self) -> None:
+        cfg = _config()
+        # No agent_ready_at: the agent connected/crashed without reporting `ready`.
+        trace = Trace(challenge_id=cfg.id, agent_name="agent", started_at=time.time() - 100)
+        trace.ended_at = time.time()
+        trace.timed_out = True
+        trace.final_state = FinalState(inventory={}, health=None)
+
+        report = score_resource_gathering(cfg, trace, {"alive": False, "deaths": 0})
+
+        self.assertFalse(report["spawned"])
+        self.assertEqual(report["status"], "agent_never_spawned")
+        self.assertEqual(report["score"], 0)
+
     def test_time_efficiency_zero_when_timed_out(self) -> None:
         cfg = _config()
         trace = Trace(challenge_id=cfg.id, agent_name="agent", started_at=time.time() - 1200)
