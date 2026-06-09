@@ -11,20 +11,10 @@ username: BenchmarkBot
 kit:
   - item: netherite_pickaxe
     count: 1
-    enchantments:
-      - efficiency:5
-      - unbreaking:3
-      - fortune:3
   - item: netherite_axe
     count: 1
-    enchantments:
-      - efficiency:5
-      - unbreaking:3
   - item: netherite_shovel
     count: 1
-    enchantments:
-      - efficiency:5
-      - unbreaking:3
   - item: cooked_beef
     count: 64
   - item: torch

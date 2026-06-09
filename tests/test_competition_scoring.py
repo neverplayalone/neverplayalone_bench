@@ -74,18 +74,17 @@ class CompetitionScoringTest(unittest.TestCase):
         self.assertEqual(cfg.minecraft_version, "1.21.11")
         self.assertEqual(cfg.world_type, "normal")
 
-    def test_kit_item_stack_uses_1_21_item_components(self) -> None:
-        item = _kit_item_stack(
-            KitItem(
-                item="netherite_pickaxe",
-                enchantments=["efficiency:5", "unbreaking:3", "fortune:3"],
-            )
-        )
+    def test_kit_item_stack_defaults_to_plain_item_for_agent_compatibility(self) -> None:
+        item = _kit_item_stack(KitItem(item="netherite_pickaxe"))
+
+        self.assertEqual(item, "minecraft:netherite_pickaxe")
+
+    def test_kit_item_stack_can_still_encode_enchantments_for_custom_configs(self) -> None:
+        item = _kit_item_stack(KitItem(item="netherite_pickaxe", enchantments=["efficiency:5"]))
 
         self.assertEqual(
             item,
-            'minecraft:netherite_pickaxe[minecraft:enchantments={"minecraft:efficiency":5,'
-            '"minecraft:unbreaking":3,"minecraft:fortune":3}]',
+            'minecraft:netherite_pickaxe[minecraft:enchantments={"minecraft:efficiency":5}]',
         )
 
     def test_target_count_scoring_caps_logical_resource_group(self) -> None:

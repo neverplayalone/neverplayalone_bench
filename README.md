@@ -33,6 +33,9 @@ mcbench resource-gather \
 ## Challenge Model
 
 The base runtime settings live in `resource_base.yaml`.
+The default starter kit intentionally uses unenchanted netherite tools. This
+keeps Mineflayer/prismarine agents compatible with Minecraft 1.21 item metadata
+while still giving every miner strong baseline tools.
 
 The resource catalog lives in `resource_catalog.yaml`:
 
