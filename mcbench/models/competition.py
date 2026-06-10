@@ -70,6 +70,9 @@ class ResourceCompetitionConfig(BaseModel):
     # When set (e.g. "minecraft:forest"), the world is pinned to this single biome
     # via a generated world-preset datapack; None => normal multi-biome generation.
     biome: str | None = None
+    # Side length (blocks) of the square worldborder centered on spawn. Bounds the
+    # playable arena; the world is otherwise effectively infinite.
+    world_size: int = 5000
     generate_structures: bool = True
     difficulty: Literal["peaceful", "easy", "normal", "hard"] = "peaceful"
     memory: str = "2G"

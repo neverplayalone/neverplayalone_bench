@@ -5,6 +5,8 @@ generate_structures: true
 difficulty: peaceful
 memory: 2G
 duration_seconds: 120
+# Playable arena: a 2000 x 2000 worldborder centered on spawn.
+world_size: 5000
 spawn_time: 0
 username: BenchmarkBot
 

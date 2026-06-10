@@ -12,14 +12,14 @@ resources:
       - dark_oak_log
       - mangrove_log
       - cherry_log
-    target_range: [16, 128]
+    target_range: [100, 150]
     points: 100
 
   cobblestone:
     display_name: cobblestone
     items:
       - cobblestone
-    target_range: [32, 256]
+    target_range: [50, 100]
     points: 100
 
   coal:
@@ -34,6 +34,6 @@ resources:
     items:
       - sand
       - red_sand
-    target_range: [16, 128]
+    target_range: [50, 100]
     points: 100
 

@@ -58,6 +58,11 @@ def _configure_world_start(server: ServerConfig, cfg: ResourceCompetitionConfig)
         mcr.command("gamerule doMobSpawning false")
         mcr.command(f"difficulty {cfg.difficulty}")
         mcr.command(f"time set {cfg.spawn_time}")
+        # Bound the playable arena to a square of side cfg.world_size centered on
+        # spawn (world spawn is near 0,0; per-slot spawn is chosen within a few
+        # blocks of it, so this is effectively centered on the agent).
+        mcr.command("worldborder center 0 0")
+        mcr.command(f"worldborder set {cfg.world_size}")
 
 
 def _prepare_playable_spawn(
