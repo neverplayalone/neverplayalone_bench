@@ -1,8 +1,4 @@
-"""Batch resource-gathering evaluation for validator-style runs.
-
-A batch has one generated challenge and one canonical world template. Each miner
-gets an isolated slot copied from that template, then all slots run in parallel.
-"""
+"""Batch orchestration: generate a challenge, build a world template, run slots in parallel."""
 
 from __future__ import annotations
 
@@ -16,110 +12,21 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import yaml
-from pydantic import BaseModel, field_validator
 from rich.console import Console
 
 from .agents import AgentSpec, SubprocessAgent
-from .competition import (
-    COMPETITION_RESULTS_DIR,
-    CompetitionSlot,
-    ResourceCompetitionConfig,
-    ResourceTarget,
-    _configure_world_start,
-    _start_slot,
-    _stop_slot,
-    run_resource_gathering_competition,
-)
-from .rcon import rcon_session
-from .recorder import RecordOptions
-from .server import wait_for_ready
+from .container import _start_slot, _stop_slot
+from .minecraft.rcon import rcon_session
+from .minecraft.server import wait_for_ready
+from .minecraft.world import _configure_world_start
+from .models.challenge import GeneratedChallenge, ResourceCatalog
+from .models.competition import ResourceCompetitionConfig, ResourceTarget
+from .paths import COMPETITION_RESULTS_DIR
+from .recording.recorder import RecordOptions
+from .runner import run_resource_gathering_competition
+from .slot import CompetitionSlot
 
 console = Console()
-
-
-class ResourceCatalogEntry(BaseModel):
-    """One logical resource that can be selected for a challenge."""
-
-    items: list[str]
-    target_range: tuple[int, int]
-    points: float = 100.0
-    display_name: str | None = None
-
-    @field_validator("items")
-    @classmethod
-    def items_must_not_be_empty(cls, value: list[str]) -> list[str]:
-        if not value:
-            raise ValueError("catalog resource must count at least one item")
-        return value
-
-    @field_validator("target_range")
-    @classmethod
-    def target_range_must_be_valid(cls, value: tuple[int, int]) -> tuple[int, int]:
-        lo, hi = value
-        if lo <= 0 or hi <= 0 or lo > hi:
-            raise ValueError("target_range must be positive and increasing")
-        return value
-
-
-class ResourceCatalog(BaseModel):
-    resources: dict[str, ResourceCatalogEntry]
-
-    @field_validator("resources")
-    @classmethod
-    def resources_must_not_be_empty(
-        cls, value: dict[str, ResourceCatalogEntry]
-    ) -> dict[str, ResourceCatalogEntry]:
-        if not value:
-            raise ValueError("resource catalog cannot be empty")
-        return value
-
-
-class GeneratedChallenge(BaseModel):
-    """The frozen task all miners in one batch receive."""
-
-    challenge_id: str
-    seed: int
-    world_seed: int
-    resource: str
-    items: list[str]
-    target_count: int
-    points: float
-    goal: str
-    duration_seconds: int
-    minecraft_version: str
-    world_type: str
-    generate_structures: bool
-    difficulty: str
-    spawn_time: int
-
-    def to_competition_config(
-        self, base_cfg: ResourceCompetitionConfig
-    ) -> ResourceCompetitionConfig:
-        data = base_cfg.model_dump()
-        data.update(
-            {
-                "id": self.challenge_id,
-                "seed": self.world_seed,
-                "minecraft_version": self.minecraft_version,
-                "world_type": self.world_type,
-                "generate_structures": self.generate_structures,
-                "difficulty": self.difficulty,
-                "duration_seconds": self.duration_seconds,
-                "spawn_time": self.spawn_time,
-                "goal": self.goal,
-                "resources": [
-                    ResourceTarget(
-                        item=self.resource,
-                        items=self.items,
-                        target_count=self.target_count,
-                        points=self.points,
-                    ).model_dump()
-                ],
-            }
-        )
-        return ResourceCompetitionConfig.model_validate(data)
-
 
 @dataclass(frozen=True)
 class EvaluationSlot:
@@ -136,11 +43,6 @@ class EvaluationBatch:
     slots: list[EvaluationSlot]
     output_dir: Path
     world_template_dir: Path
-
-
-def load_resource_catalog(path: str | Path) -> ResourceCatalog:
-    raw = yaml.safe_load(Path(path).read_text()) or {}
-    return ResourceCatalog.model_validate(raw)
 
 
 def generate_challenge(
@@ -175,6 +77,7 @@ def generate_challenge(
         generate_structures=base_cfg.generate_structures,
         difficulty=base_cfg.difficulty,
         spawn_time=base_cfg.spawn_time,
+        biome=entry.biome,
     )
 
 

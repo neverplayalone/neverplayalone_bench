@@ -21,7 +21,7 @@ from pathlib import Path
 from queue import Empty, Queue
 from typing import Iterator
 
-from ..trace import TraceEvent, parse_event_line
+from ..models.trace import TraceEvent, parse_event_line
 from .base import Agent, AgentRunContext
 
 
@@ -78,8 +78,11 @@ class SubprocessAgent(Agent):
         while True:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
+                # End the run but leave the process alive: the caller captures the
+                # final world state (inventory, position) over RCON while the bot is
+                # still connected, then calls stop(). Killing here would disconnect
+                # the player first, so the capture would read an absent entity.
                 yield TraceEvent(kind="info", data={"msg": "timeout"})
-                self.stop()
                 return
             if self.proc.poll() is not None and queue.empty():
                 if self.proc.returncode:

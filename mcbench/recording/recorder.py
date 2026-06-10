@@ -1,4 +1,4 @@
-"""Sidecar packet recorder process: spawns the Node recorder under mcbench/recorder/."""
+"""Sidecar packet recorder process: spawns the Node recorder under recording/sidecar/."""
 
 from __future__ import annotations
 
@@ -10,8 +10,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-RECORDER_DIR = Path(__file__).resolve().parent / "recorder"
+RECORDER_DIR = Path(__file__).resolve().parent / "sidecar"
 
 
 def _node_bin() -> str:

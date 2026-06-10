@@ -11,19 +11,22 @@ state, same spawn state, and same time limit.
 
 ```bash
 pip install -e .
-(cd mcbench/recorder && npm install)
+(cd mcbench/recording/sidecar && npm install)
 (cd agents_examples/log_gatherer && npm install)
 
-mcbench resource-gather \
+mcbench run --competition resource_gathering_v1 \
   --seed 42 \
   --agent log_gatherer=agents_examples/log_gatherer \
   --record
 ```
 
+`mcbench resource-gather` is a shorthand alias for
+`mcbench run --competition resource_gathering_v1`.
+
 Multiple miners can be evaluated in parallel by repeating `--agent`:
 
 ```bash
-mcbench resource-gather \
+mcbench run --competition resource_gathering_v1 \
   --seed 42 \
   --agent miner_a=/path/to/miner_a \
   --agent miner_b=/path/to/miner_b \
@@ -32,12 +35,13 @@ mcbench resource-gather \
 
 ## Challenge Model
 
-The base runtime settings live in `resource_base.yaml`.
+Each competition's config lives under `configs/<competition>/`. For resource
+gathering the base runtime settings are `configs/resource_gathering/base.yaml`.
 The default starter kit intentionally uses unenchanted netherite tools. This
 keeps Mineflayer/prismarine agents compatible with Minecraft 1.21 item metadata
 while still giving every miner strong baseline tools.
 
-The resource catalog lives in `resource_catalog.yaml`:
+The resource catalog lives in `configs/resource_gathering/catalog.yaml`:
 
 ```yaml
 resources:
@@ -58,14 +62,19 @@ challenge from the catalog and seed. Example:
 }
 ```
 
-Only resources in the miner inventory are counted, and they only score when the
-miner finishes within 20 horizontal blocks of the selected spawn position.
-
-Score:
+Only resources in the miner's inventory at the end are counted. The score is the
+resource score scaled by a distance multiplier based on how close the miner ends
+to spawn:
 
 ```text
-min(inventory_count, target_count) / target_count * points
+resource_score = min(inventory_count, target_count) / target_count * points
+score          = resource_score * distance_multiplier
 ```
+
+The distance multiplier is `1.0` within 10 blocks of spawn and steps down by band
+to a `0.20` floor beyond 2000 blocks (configurable via `scoring.distance_bands`).
+Time to finish is not scored; it is reported as `time_efficiency` only to break
+ties between equal scores.
 
 ## Outputs
 
@@ -94,16 +103,20 @@ mcbench replay export-mcpr results/<run_id>/packets.jsonl.gz
 
 ```text
 mcbench/                   Python package
-  cli.py                   CLI
-  competition.py           Single-slot resource run and scoring
-  resource_batch.py        Challenge generation, world template, parallel slots
-  server.py                Docker lifecycle helpers
-  recorder.py              Recorder process wrapper
-  replay_tool.py           Packet log to ReplayMod export
+  cli.py                   CLI (run --competition <id>, replay)
+  registry.py              Competition registry (id -> config)
+  config.py  paths.py      YAML loaders / filesystem locations
+  runner.py                Single-slot run loop
+  batch.py                 Challenge generation, world template, parallel slots
+  scoring.py               Resource * distance-multiplier scoring
+  slot.py  container.py     Slot definition / Docker container lifecycle
+  models/                  Pydantic models (competition, challenge, trace)
+  minecraft/               Server interaction (rcon, server, world, commands)
+  recording/               Recorder wrapper, ReplayMod export, Node sidecar/
   agents/                  Agent subprocess adapter
+configs/
+  resource_gathering/      base.yaml (runtime defaults) + catalog.yaml
 agents_examples/
   log_gatherer/            Reference Mineflayer log-gathering miner
-docker/                    Paper server compose/config
-resource_base.yaml         Runtime defaults
-resource_catalog.yaml      Resource categories and target ranges
+docker/                    Paper server config (bukkit.yml)
 ```

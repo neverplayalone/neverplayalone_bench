@@ -3,19 +3,16 @@ from __future__ import annotations
 import time
 import unittest
 
-from mcbench.competition import (
+from mcbench.minecraft.world import _kit_item_stack, _prepare_playable_spawn
+from mcbench.models.competition import (
     CompetitionScoringConfig,
-    CompetitionSlot,
     KitItem,
     ResourceCompetitionConfig,
     ResourceTarget,
-    _distance_multiplier,
-    _kit_item_stack,
-    _prepare_playable_spawn,
-    _random_rcon_password,
-    score_resource_gathering,
 )
-from mcbench.trace import FinalState, Trace, TraceEvent
+from mcbench.models.trace import FinalState, Trace, TraceEvent
+from mcbench.scoring import _distance_multiplier, score_resource_gathering
+from mcbench.slot import CompetitionSlot, _random_rcon_password
 
 
 def _config(duration_seconds: int = 1200) -> ResourceCompetitionConfig:
@@ -46,7 +43,16 @@ class FakeRcon:
         return ""
 
 
-BANDS = [(20.0, 1.0), (50.0, 0.9), (80.0, 0.8), (110.0, 0.7), (140.0, 0.6)]
+BANDS = [
+    (10.0, 1.00),
+    (30.0, 0.90),
+    (100.0, 0.75),
+    (250.0, 0.60),
+    (500.0, 0.50),
+    (1000.0, 0.40),
+    (2000.0, 0.30),
+]
+FLOOR = 0.20
 
 
 class RconPasswordTest(unittest.TestCase):
@@ -68,22 +74,23 @@ class RconPasswordTest(unittest.TestCase):
 
 class DistanceMultiplierTest(unittest.TestCase):
     def test_full_credit_within_radius(self) -> None:
-        self.assertEqual(_distance_multiplier(0, BANDS, 0.5), 1.0)
-        self.assertEqual(_distance_multiplier(20, BANDS, 0.5), 1.0)
+        self.assertEqual(_distance_multiplier(0, BANDS, FLOOR), 1.0)
+        self.assertEqual(_distance_multiplier(10, BANDS, FLOOR), 1.0)
 
     def test_bands_apply_at_or_below_bound(self) -> None:
-        self.assertEqual(_distance_multiplier(35, BANDS, 0.5), 0.9)
-        self.assertEqual(_distance_multiplier(50, BANDS, 0.5), 0.9)
-        self.assertEqual(_distance_multiplier(80, BANDS, 0.5), 0.8)
-        self.assertEqual(_distance_multiplier(110, BANDS, 0.5), 0.7)
-        self.assertEqual(_distance_multiplier(140, BANDS, 0.5), 0.6)
+        self.assertEqual(_distance_multiplier(30, BANDS, FLOOR), 0.90)
+        self.assertEqual(_distance_multiplier(100, BANDS, FLOOR), 0.75)
+        self.assertEqual(_distance_multiplier(250, BANDS, FLOOR), 0.60)
+        self.assertEqual(_distance_multiplier(500, BANDS, FLOOR), 0.50)
+        self.assertEqual(_distance_multiplier(1000, BANDS, FLOOR), 0.40)
+        self.assertEqual(_distance_multiplier(2000, BANDS, FLOOR), 0.30)
 
     def test_beyond_last_band_is_floor(self) -> None:
-        self.assertEqual(_distance_multiplier(141, BANDS, 0.5), 0.5)
-        self.assertEqual(_distance_multiplier(5000, BANDS, 0.5), 0.5)
+        self.assertEqual(_distance_multiplier(2001, BANDS, FLOOR), 0.20)
+        self.assertEqual(_distance_multiplier(50000, BANDS, FLOOR), 0.20)
 
     def test_unknown_distance_is_floor(self) -> None:
-        self.assertEqual(_distance_multiplier(None, BANDS, 0.5), 0.5)
+        self.assertEqual(_distance_multiplier(None, BANDS, FLOOR), 0.20)
 
 
 class CompetitionScoringTest(unittest.TestCase):
@@ -178,13 +185,13 @@ class CompetitionScoringTest(unittest.TestCase):
         trace.final_state = FinalState(inventory={"oak_log": 64}, health=20)
 
         report = score_resource_gathering(
-            cfg, trace, {"alive": True, "deaths": 0, "distance_from_spawn": 50.0}
+            cfg, trace, {"alive": True, "deaths": 0, "distance_from_spawn": 100.0}
         )
 
-        # full resources, 0.9 multiplier at 50 blocks
+        # full resources, 0.75 multiplier at 100 blocks
         self.assertEqual(report["resource_score"], 100)
-        self.assertAlmostEqual(report["distance_multiplier"], 0.9)
-        self.assertAlmostEqual(report["score"], 90)
+        self.assertAlmostEqual(report["distance_multiplier"], 0.75)
+        self.assertAlmostEqual(report["score"], 75)
 
     def test_resources_never_zero_out_far_away(self) -> None:
         cfg = _config()
@@ -197,8 +204,8 @@ class CompetitionScoringTest(unittest.TestCase):
             cfg, trace, {"alive": True, "deaths": 0, "distance_from_spawn": 9999.0}
         )
 
-        self.assertEqual(report["distance_multiplier"], 0.5)
-        self.assertEqual(report["score"], 50)  # 100 * 0.5 floor
+        self.assertEqual(report["distance_multiplier"], 0.20)
+        self.assertAlmostEqual(report["score"], 20)  # 100 * 0.20 floor
 
     def test_partial_resources_scale(self) -> None:
         cfg = _config()

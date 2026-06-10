@@ -1,18 +1,19 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
 
 from mcbench.agents import AgentSpec
-from mcbench.competition import ResourceCompetitionConfig, ResourceTarget
-from mcbench.resource_batch import (
-    ResourceCatalog,
-    ResourceCatalogEntry,
+from mcbench.batch import (
     _cleanup_slot_worlds,
     create_evaluation_batch,
     generate_challenge,
 )
+from mcbench.container import _write_biome_datapack
+from mcbench.models.challenge import ResourceCatalog, ResourceCatalogEntry
+from mcbench.models.competition import ResourceCompetitionConfig, ResourceTarget
 
 
 class ResourceBatchTest(unittest.TestCase):
@@ -107,6 +108,48 @@ class CleanupSlotWorldsTest(unittest.TestCase):
             batch = self._batch(out)
             out.mkdir(parents=True)
             _cleanup_slot_worlds(batch)  # should not raise
+
+
+class BiomePinningTest(unittest.TestCase):
+    def test_biome_propagates_catalog_to_challenge_to_config(self) -> None:
+        catalog = ResourceCatalog(
+            resources={
+                "logs": ResourceCatalogEntry(
+                    items=["oak_log"], target_range=(8, 8), biome="minecraft:forest"
+                )
+            }
+        )
+        base = ResourceCompetitionConfig()
+        challenge = generate_challenge(catalog, base, seed=1)
+        self.assertEqual(challenge.biome, "minecraft:forest")
+        self.assertEqual(challenge.to_competition_config(base).biome, "minecraft:forest")
+
+    def test_no_biome_defaults_to_none(self) -> None:
+        catalog = ResourceCatalog(
+            resources={"coal": ResourceCatalogEntry(items=["coal"], target_range=(8, 8))}
+        )
+        base = ResourceCompetitionConfig()
+        challenge = generate_challenge(catalog, base, seed=1)
+        self.assertIsNone(challenge.biome)
+        self.assertIsNone(challenge.to_competition_config(base).biome)
+
+    def test_write_biome_datapack_creates_valid_preset(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            data_dir = Path(tmp)
+            _write_biome_datapack(data_dir, "minecraft:forest")
+
+            dp = data_dir / "world" / "datapacks" / "mcbench_biome"
+            mcmeta = dp / "pack.mcmeta"
+            preset = dp / "data" / "mcbench" / "worldgen" / "world_preset" / "single_biome.json"
+            self.assertTrue(mcmeta.exists())
+            self.assertTrue(preset.exists())
+
+            json.loads(mcmeta.read_text())  # valid JSON
+            src = json.loads(preset.read_text())["dimensions"]["minecraft:overworld"][
+                "generator"
+            ]["biome_source"]
+            self.assertEqual(src["type"], "minecraft:fixed")
+            self.assertEqual(src["biome"], "minecraft:forest")
 
 
 if __name__ == "__main__":

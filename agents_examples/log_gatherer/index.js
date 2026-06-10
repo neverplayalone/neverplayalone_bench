@@ -89,9 +89,12 @@ function findNearestLog(bot, mcData) {
     maxDistance: 64,
     count: 64,
   });
+  // Keep every log we can see within range, not only ones already in dig reach:
+  // bot.canDigBlock filters to ~4-5 blocks + line-of-sight, which in a forest
+  // discards the nearby trunks we should path toward. We move to it, then dig.
   const blocks = positions
     .map((pos) => bot.blockAt(pos))
-    .filter((block) => block && bot.canDigBlock(block));
+    .filter((block) => block && LOG_NAMES.includes(block.name));
   if (!blocks.length) return null;
   blocks.sort((a, b) =>
     a.position.distanceTo(bot.entity.position) - b.position.distanceTo(bot.entity.position)
