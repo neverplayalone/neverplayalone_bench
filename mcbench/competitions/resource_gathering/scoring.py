@@ -6,8 +6,8 @@ import math
 import time
 from typing import Any
 
-from .models.competition import ResourceCompetitionConfig, ResourceTarget
-from .models.trace import Trace
+from ...core.trace import Trace
+from .config import ResourceCompetitionConfig, ResourceTarget
 
 def score_resource_gathering(
     cfg: ResourceCompetitionConfig,

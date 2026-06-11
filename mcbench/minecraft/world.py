@@ -1,18 +1,18 @@
-"""World setup over RCON: gamerules, spawn selection, and the competition kit."""
+"""Generic world primitives over RCON: playable-spawn search.
+
+Competition-agnostic helpers. World rules (gamerules, mobs, kit) live with each
+competition.
+"""
 
 from __future__ import annotations
 
-import json
 import math
 import time
 
 from mcrcon import MCRcon
 from rich.console import Console
 
-from ..models.competition import KitItem, ResourceCompetitionConfig
 from .commands import _block_matches, _parse_pos
-from .rcon import rcon_session
-from .server import ServerConfig
 
 console = Console()
 
@@ -45,24 +45,6 @@ BAD_SPAWN_BLOCKS = (
     "minecraft:soul_fire",
     "minecraft:cactus",
 )
-
-
-def _configure_world_start(server: ServerConfig, cfg: ResourceCompetitionConfig) -> None:
-    with rcon_session(server.host, server.rcon_port, server.rcon_password) as mcr:
-        mcr.command("gamerule keep_inventory false")
-        mcr.command("gamerule advance_time true")
-        mcr.command("gamerule advance_weather true")
-        # Determinism across slots: mobs spawn from per-container RNG that a shared
-        # world template cannot pin down. With peaceful difficulty plus no mob
-        # spawning, every slot sees the same empty world.
-        mcr.command("gamerule doMobSpawning false")
-        mcr.command(f"difficulty {cfg.difficulty}")
-        mcr.command(f"time set {cfg.spawn_time}")
-        # Bound the playable arena to a square of side cfg.world_size centered on
-        # spawn (world spawn is near 0,0; per-slot spawn is chosen within a few
-        # blocks of it, so this is effectively centered on the agent).
-        mcr.command("worldborder center 0 0")
-        mcr.command(f"worldborder set {cfg.world_size}")
 
 
 def _prepare_playable_spawn(
@@ -155,31 +137,3 @@ def _has_bad_spawn_block_nearby(mcr: MCRcon, x: int, y: int, z: int) -> bool:
         for px, py, pz in positions
         for block in BAD_SPAWN_BLOCKS
     )
-
-
-def _give_kit_item(mcr: MCRcon, username: str, kit: KitItem) -> None:
-    item = _kit_item_stack(kit)
-    if kit.slot:
-        mcr.command(f"item replace entity {username} {kit.slot} with {item} {kit.count}")
-    else:
-        mcr.command(f"give {username} {item} {kit.count}")
-
-
-def _kit_item_stack(kit: KitItem) -> str:
-    item = f"minecraft:{kit.item}"
-    if not kit.enchantments:
-        return item
-    levels = {f"minecraft:{name}": level for name, level in _enchants(kit)}
-    enchantments = json.dumps(levels, separators=(",", ":"))
-    return f"{item}[minecraft:enchantments={enchantments}]"
-
-
-def _enchants(kit: KitItem) -> list[tuple[str, int]]:
-    out: list[tuple[str, int]] = []
-    for raw in kit.enchantments:
-        name, _, level_raw = raw.partition(":")
-        level = int(level_raw or "1")
-        out.append((name, level))
-    return out
-
-

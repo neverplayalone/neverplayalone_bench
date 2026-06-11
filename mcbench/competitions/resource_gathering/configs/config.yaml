@@ -1,0 +1,83 @@
+id: resource_gathering_v1
+minecraft_version: "1.21.11"
+world_type: normal
+generate_structures: true
+difficulty: peaceful
+memory: 2G
+duration_seconds: 120
+# Playable arena: a worldborder of this side length (blocks) centered on spawn.
+world_size: 5000
+spawn_time: 0
+username: BenchmarkBot
+
+kit:
+  - item: netherite_pickaxe
+    count: 1
+  - item: netherite_axe
+    count: 1
+  - item: netherite_shovel
+    count: 1
+  - item: cooked_beef
+    count: 64
+  - item: torch
+    count: 64
+  - item: water_bucket
+    count: 1
+    slot: weapon.offhand
+
+scoring:
+  # Final score = resource_score * distance_multiplier, by distance from spawn at
+  # the end. Each [max_distance, multiplier] applies at or below that distance;
+  # beyond the last band the multiplier is distance_floor_mult.
+  # Time-to-finish is not scored; it only breaks ties between equal scores.
+  distance_bands:
+    - [10, 1.00]
+    - [30, 0.90]
+    - [100, 0.75]
+    - [250, 0.60]
+    - [500, 0.50]
+    - [1000, 0.40]
+    - [2000, 0.30]
+  distance_floor_mult: 0.20
+
+# Challenge catalog: the menu of tasks. The seed deterministically picks one
+# resource and a target count within its range to form the challenge.
+catalog:
+  resources:
+    logs:
+      display_name: logs
+      # Pin the world to forest so trees are guaranteed near spawn (no ice-world).
+      biome: minecraft:forest
+      items:
+        - oak_log
+        - birch_log
+        - spruce_log
+        - jungle_log
+        - acacia_log
+        - dark_oak_log
+        - mangrove_log
+        - cherry_log
+      target_range: [100, 150]
+      points: 100
+
+    cobblestone:
+      display_name: cobblestone
+      items:
+        - cobblestone
+      target_range: [50, 100]
+      points: 100
+
+    coal:
+      display_name: coal
+      items:
+        - coal
+      target_range: [8, 64]
+      points: 100
+
+    sand:
+      display_name: sand
+      items:
+        - sand
+        - red_sand
+      target_range: [50, 100]
+      points: 100

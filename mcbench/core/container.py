@@ -7,8 +7,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from .models.competition import ResourceCompetitionConfig
-from .paths import DOCKER_DIR
+from ..paths import DOCKER_DIR
+from .competition import RunConfig
 from .slot import CompetitionSlot
 
 # world_preset id provided by the datapack we write for single-biome worlds.
@@ -71,7 +71,7 @@ def _write_biome_datapack(data_dir: Path, biome: str) -> None:
 
 def _start_slot(
     slot: CompetitionSlot,
-    cfg: ResourceCompetitionConfig,
+    cfg: RunConfig,
     world_template: Path | None = None,
 ) -> None:
     _stop_slot(slot, quiet=True)

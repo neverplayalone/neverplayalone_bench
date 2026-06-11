@@ -43,7 +43,6 @@ def _run_batch(
     *,
     competition_id: str,
     config_path: Path | None,
-    catalog_path: Path | None,
     agent_assignments: tuple[str, ...],
     seed: int,
     challenge_id: str | None,
@@ -53,27 +52,19 @@ def _run_batch(
     record: bool,
     keep_slots: bool,
 ) -> None:
-    from .batch import (
-        create_evaluation_batch,
-        parse_agent_assignment,
-        run_evaluation_batch,
-    )
-    from .config import load_resource_competition_config, load_resource_catalog
+    from .core import create_evaluation_batch, parse_agent_assignment, run_evaluation_batch
     from .registry import get_competition
 
     try:
-        entry = get_competition(competition_id)
-        cfg_path = config_path or entry.config_path
-        cat_path = catalog_path or entry.catalog_path
-        for label, path in (("config", cfg_path), ("catalog", cat_path)):
-            if not Path(path).exists():
-                raise ValueError(f"{label} file does not exist: {path}")
+        competition = get_competition(competition_id)
+        cfg_path = config_path or competition.default_config_path()
+        if not Path(cfg_path).exists():
+            raise ValueError(f"config file does not exist: {cfg_path}")
 
         agents = [parse_agent_assignment(raw) for raw in agent_assignments]
-        cfg = load_resource_competition_config(cfg_path)
-        catalog = load_resource_catalog(cat_path)
+        cfg = competition.load_config(cfg_path)
         batch = create_evaluation_batch(
-            catalog=catalog,
+            competition=competition,
             base_cfg=cfg,
             agents=agents,
             seed=seed,
@@ -107,14 +98,7 @@ def _batch_options(func):
             "config_path",
             type=click.Path(path_type=Path),
             default=None,
-            help="Base run config (default: the competition's configs/<id>/base.yaml).",
-        ),
-        click.option(
-            "--catalog",
-            "catalog_path",
-            type=click.Path(path_type=Path),
-            default=None,
-            help="Resource catalog (default: the competition's configs/<id>/catalog.yaml).",
+            help="Run config (default: the competition's bundled config.yaml).",
         ),
         click.option(
             "--agent",

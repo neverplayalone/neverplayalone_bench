@@ -6,8 +6,8 @@ import secrets
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .minecraft.server import ServerConfig
-from .paths import COMPETITION_RESULTS_DIR
+from ..minecraft.server import ServerConfig
+from ..paths import COMPETITION_RESULTS_DIR
 
 def _random_rcon_password() -> str:
     """A fresh, unguessable RCON password per slot.

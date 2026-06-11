@@ -35,20 +35,24 @@ mcbench run --competition resource_gathering_v1 \
 
 ## Challenge Model
 
-Each competition's config lives under `configs/<competition>/`. For resource
-gathering the base runtime settings are `configs/resource_gathering/base.yaml`.
-The default starter kit intentionally uses unenchanted netherite tools. This
-keeps Mineflayer/prismarine agents compatible with Minecraft 1.21 item metadata
-while still giving every miner strong baseline tools.
+Each competition bundles a single config file with its code at
+`mcbench/competitions/<competition>/configs/config.yaml`. It holds the run
+settings (version, memory, duration, world_size, difficulty, kit, scoring) and
+the challenge `catalog` — the menu of tasks the seed picks from. The default
+starter kit intentionally uses unenchanted netherite tools, keeping
+Mineflayer/prismarine agents compatible with Minecraft 1.21 item metadata while
+still giving every miner strong baseline tools.
 
-The resource catalog lives in `configs/resource_gathering/catalog.yaml`:
+The `catalog` section lists the selectable resources:
 
 ```yaml
-resources:
-  logs:
-    items: [oak_log, birch_log, spruce_log]
-    target_range: [16, 128]
-    points: 100
+catalog:
+  resources:
+    logs:
+      biome: minecraft:forest
+      items: [oak_log, birch_log, spruce_log]
+      target_range: [100, 150]
+      points: 100
 ```
 
 For each evaluation batch, the validator derives a deterministic generated
@@ -101,21 +105,27 @@ mcbench replay export-mcpr results/<run_id>/packets.jsonl.gz
 
 ## Repository Layout
 
+The package is split into a generic engine (`core/`) and one self-contained
+plugin per competition (`competitions/<name>/`). Adding a competition = drop in
+a new folder implementing `Competition`; the engine needs no changes.
+
 ```text
 mcbench/                   Python package
   cli.py                   CLI (run --competition <id>, replay)
-  registry.py              Competition registry (id -> config)
-  config.py  paths.py      YAML loaders / filesystem locations
-  runner.py                Single-slot run loop
-  batch.py                 Challenge generation, world template, parallel slots
-  scoring.py               Resource * distance-multiplier scoring
-  slot.py  container.py     Slot definition / Docker container lifecycle
-  models/                  Pydantic models (competition, challenge, trace)
+  registry.py              Competition registry (id -> Competition)
+  paths.py                 Filesystem locations
+  core/                    Generic engine (competition-agnostic)
+    competition.py         Competition ABC + shared RunConfig / KitItem
+    runner.py              Single-slot run loop (drives a Competition)
+    batch.py               World template + parallel slots
+    slot.py  container.py  Slot definition / Docker container lifecycle
+    trace.py               Trace + final-state models
   minecraft/               Server interaction (rcon, server, world, commands)
   recording/               Recorder wrapper, ReplayMod export, Node sidecar/
   agents/                  Agent subprocess adapter
-configs/
-  resource_gathering/      base.yaml (runtime defaults) + catalog.yaml
+  competitions/
+    resource_gathering/    v1 plugin: competition, config, challenge,
+      configs/             scoring, world setup, + bundled config.yaml
 agents_examples/
   log_gatherer/            Reference Mineflayer log-gathering miner
 docker/                    Paper server config (bukkit.yml)

@@ -1,4 +1,9 @@
-"""Single-slot resource-gathering run: start server, run agent, capture, score."""
+"""Single-slot run: start server, configure the world, run the agent, capture, score.
+
+This is the generic engine loop. Everything competition-specific (world rules,
+kit/spawn setup, what to capture, how to score) is delegated to the supplied
+:class:`Competition`.
+"""
 
 from __future__ import annotations
 
@@ -8,34 +13,31 @@ import time
 from pathlib import Path
 from typing import Any
 
-from mcrcon import MCRcon
 from rich.console import Console
 
-from .agents import Agent
-from .agents.base import AgentRunContext
-from .container import _start_slot, _stop_slot
-from .minecraft.commands import _count_item, _parse_pos, _parse_scalar, _read_score
-from .minecraft.rcon import rcon_session
-from .minecraft.server import ServerConfig, wait_for_ready
-from .minecraft.world import _configure_world_start, _give_kit_item, _prepare_playable_spawn
-from .models.competition import ResourceCompetitionConfig
-from .models.trace import FinalState, Trace, TraceEvent
-from .paths import COMPETITION_RESULTS_DIR
-from .recording.recorder import (
+from ..agents import Agent
+from ..agents.base import AgentRunContext
+from ..minecraft.rcon import rcon_session
+from ..minecraft.server import wait_for_ready
+from ..paths import COMPETITION_RESULTS_DIR
+from ..recording.recorder import (
     Recorder,
     RecordOptions,
     is_available as recorder_available,
     wait_for_settle,
 )
-from .recording.replay import export_mcpr
-from .scoring import _counted_items, _horizontal_distance_from_spawn, score_resource_gathering
+from ..recording.replay import export_mcpr
+from .competition import Competition, RunConfig
+from .container import _start_slot, _stop_slot
 from .slot import CompetitionSlot
+from .trace import Trace, TraceEvent
 
 console = Console()
 
 
-def run_resource_gathering_competition(
-    cfg: ResourceCompetitionConfig,
+def run_competition(
+    competition: Competition,
+    cfg: RunConfig,
     agent: Agent,
     slot: CompetitionSlot | None = None,
     out_dir: str | Path | None = None,
@@ -44,8 +46,6 @@ def run_resource_gathering_competition(
     world_template: str | Path | None = None,
 ) -> dict[str, Any]:
     slot = slot or CompetitionSlot()
-    if not cfg.resources:
-        raise RuntimeError("resource competition config must include at least one target resource")
     run_id = f"{cfg.id}__{agent.spec.name}__seed{cfg.seed}__slot{slot.slot_id}"
     output = Path(out_dir) if out_dir else COMPETITION_RESULTS_DIR / run_id
     shutil.rmtree(output, ignore_errors=True)
@@ -54,15 +54,14 @@ def run_resource_gathering_competition(
     trace = Trace(challenge_id=cfg.id, agent_name=agent.spec.name, started_at=time.time())
     setup_done = False
     timed_out = False
-    death_baseline = 0
-    spawn_pos: tuple[int, int, int] | None = None
+    setup_state: Any = None
     slot_started = False
     recorder: Recorder | None = None
     final_snapshot: dict[str, Any] | None = None
 
     try:
         console.log(
-            f"[bold cyan]Resource gathering[/]: {run_id} | "
+            f"[bold cyan]{competition.id}[/]: {run_id} | "
             f"slot {slot.slot_id} | ports {slot.game_port}/{slot.rcon_port}"
         )
         _start_slot(slot, cfg, world_template=Path(world_template) if world_template else None)
@@ -70,7 +69,8 @@ def run_resource_gathering_competition(
         try:
             server = slot.server_config()
             wait_for_ready(server, timeout=600)
-            _configure_world_start(server, cfg)
+            with rcon_session(server.host, server.rcon_port, server.rcon_password) as mcr:
+                competition.configure_world(mcr, cfg)
 
             if record is not None:
                 ok, reason = recorder_available()
@@ -103,7 +103,7 @@ def run_resource_gathering_competition(
                 host=server.host,
                 port=server.game_port,
                 username=cfg.username,
-                goal=_goal_text(cfg),
+                goal=competition.goal_text(cfg),
                 timeout_seconds=cfg.duration_seconds,
             )
             console.log(
@@ -119,7 +119,7 @@ def run_resource_gathering_competition(
                     with rcon_session(
                         server.host, server.rcon_port, server.rcon_password
                     ) as mcr:
-                        death_baseline, spawn_pos = _setup_competitor(mcr, cfg)
+                        setup_state = competition.setup_competitor(mcr, cfg)
                         if recorder is not None and record is not None:
                             mcr.command(f"tp {record.recorder_username} {cfg.username}")
                             mcr.command(f"spectate {cfg.username} {record.recorder_username}")
@@ -134,7 +134,7 @@ def run_resource_gathering_competition(
                 console.log("Capturing competition final state...")
                 try:
                     with rcon_session(slot.host, slot.rcon_port, slot.rcon_password) as mcr:
-                        final_snapshot = _capture_final_snapshot(mcr, cfg, death_baseline, spawn_pos)
+                        final_snapshot = competition.capture(mcr, cfg, setup_state)
                         trace.final_state = final_snapshot["final_state"]
                 except Exception as e:
                     final_snapshot = {
@@ -166,17 +166,7 @@ def run_resource_gathering_competition(
                         for line in recorder.stderr_log[-40:]:
                             console.log(f"  {line}")
 
-        if final_snapshot is None:
-            console.log("Capturing competition final state...")
-            try:
-                with rcon_session(slot.host, slot.rcon_port, slot.rcon_password) as mcr:
-                    final_snapshot = _capture_final_snapshot(mcr, cfg, death_baseline, spawn_pos)
-                    trace.final_state = final_snapshot["final_state"]
-            except Exception as e:
-                final_snapshot = {"error": f"snapshot failed: {e}", "deaths": 0, "alive": False}
-                trace.append(TraceEvent(kind="error", data=final_snapshot))
-
-        report = score_resource_gathering(cfg, trace, final_snapshot)
+        report = competition.score(cfg, trace, final_snapshot or {})
         (output / "trace.json").write_text(trace.model_dump_json(indent=2))
         (output / "score.json").write_text(json.dumps(report, indent=2))
         (output / "config.json").write_text(cfg.model_dump_json(indent=2))
@@ -196,56 +186,3 @@ def run_resource_gathering_competition(
             console.log(f"[yellow]Keeping server container running:[/] {slot.container_name}")
         elif slot_started:
             _stop_slot(slot, quiet=True)
-
-
-def _setup_competitor(
-    mcr: MCRcon,
-    cfg: ResourceCompetitionConfig,
-) -> tuple[int, tuple[int, int, int]]:
-    mcr.command(f"op {cfg.username}")
-    mcr.command(f"clear {cfg.username}")
-    mcr.command("kill @e[type=item]")
-    mcr.command("scoreboard objectives remove mcb_deaths")
-    mcr.command("scoreboard objectives add mcb_deaths minecraft.custom:minecraft.deaths")
-    death_baseline = _read_score(mcr, cfg.username, "mcb_deaths")
-    spawn_pos = _prepare_playable_spawn(mcr, cfg.username)
-    for kit in cfg.kit:
-        _give_kit_item(mcr, cfg.username, kit)
-    mcr.command(f"gamemode survival {cfg.username}")
-    mcr.command(f"effect give {cfg.username} minecraft:saturation 3 10 true")
-    mcr.command(f"deop {cfg.username}")
-    return death_baseline, spawn_pos
-
-
-def _capture_final_snapshot(
-    mcr: MCRcon,
-    cfg: ResourceCompetitionConfig,
-    death_baseline: int,
-    spawn_pos: tuple[int, int, int] | None,
-) -> dict[str, Any]:
-    state = FinalState()
-    state.position = _parse_pos(mcr.command(f"data get entity {cfg.username} Pos"))
-    state.health = _parse_scalar(mcr.command(f"data get entity {cfg.username} Health"))
-    state.food = _parse_scalar(mcr.command(f"data get entity {cfg.username} foodLevel"))
-    for resource in cfg.resources:
-        total = 0
-        for item in _counted_items(resource):
-            count = _count_item(mcr, cfg.username, item)
-            state.inventory[item] = count
-            total += count
-        state.inventory[resource.item] = total
-    deaths = max(0, _read_score(mcr, cfg.username, "mcb_deaths") - death_baseline)
-    distance_from_spawn = _horizontal_distance_from_spawn(state.position, spawn_pos)
-    return {
-        "final_state": state,
-        "deaths": deaths,
-        "alive": state.health is not None and state.health > 0,
-        "spawn": {
-            "position": spawn_pos,
-        },
-        "distance_from_spawn": distance_from_spawn,
-    }
-
-
-def _goal_text(cfg: ResourceCompetitionConfig) -> str:
-    return cfg.goal

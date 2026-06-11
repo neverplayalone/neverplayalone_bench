@@ -3,16 +3,20 @@ from __future__ import annotations
 import time
 import unittest
 
-from mcbench.minecraft.world import _kit_item_stack, _prepare_playable_spawn
-from mcbench.models.competition import (
+from mcbench.competitions.resource_gathering.config import (
     CompetitionScoringConfig,
-    KitItem,
     ResourceCompetitionConfig,
     ResourceTarget,
 )
-from mcbench.models.trace import FinalState, Trace, TraceEvent
-from mcbench.scoring import _distance_multiplier, score_resource_gathering
-from mcbench.slot import CompetitionSlot, _random_rcon_password
+from mcbench.competitions.resource_gathering.scoring import (
+    _distance_multiplier,
+    score_resource_gathering,
+)
+from mcbench.competitions.resource_gathering.world import _kit_item_stack
+from mcbench.core.competition import KitItem
+from mcbench.core.slot import CompetitionSlot, _random_rcon_password
+from mcbench.core.trace import FinalState, Trace, TraceEvent
+from mcbench.minecraft.world import _prepare_playable_spawn
 
 
 def _config(duration_seconds: int = 1200) -> ResourceCompetitionConfig:

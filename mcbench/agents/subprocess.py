@@ -21,7 +21,7 @@ from pathlib import Path
 from queue import Empty, Queue
 from typing import Iterator
 
-from ..models.trace import TraceEvent, parse_event_line
+from ..core.trace import TraceEvent, parse_event_line
 from .base import Agent, AgentRunContext
 
 

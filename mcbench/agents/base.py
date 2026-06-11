@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Iterator
 
-from ..models.trace import TraceEvent
+from ..core.trace import TraceEvent
 
 
 @dataclass
