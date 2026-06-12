@@ -20,9 +20,6 @@ mcbench run log_gatherer=agents_examples/log_gatherer \
   --record
 ```
 
-`mcbench resource-gather` is a shorthand alias for
-`mcbench run --task resource_gathering_v1`.
-
 Multiple agents can be evaluated in parallel by passing multiple positional
 agent assignments:
 

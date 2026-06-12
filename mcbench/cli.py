@@ -156,14 +156,6 @@ def run_cmd(task_id: str, agents: tuple[str, ...], **kwargs) -> None:
     _run_batch(task_id=task_id, agent_assignments=agents, **kwargs)
 
 
-@main.command("resource-gather")
-@click.argument("agents", nargs=-1, required=True)
-@_batch_options
-def resource_gather_cmd(agents: tuple[str, ...], **kwargs) -> None:
-    """Alias for `run --task resource_gathering_v1`."""
-    _run_batch(task_id="resource_gathering_v1", agent_assignments=agents, **kwargs)
-
-
 @main.command("build-agent-image")
 def build_agent_image_cmd() -> None:
     """Build the sandbox runtime image used by Docker agent mode (the default)."""
