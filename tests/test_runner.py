@@ -11,7 +11,7 @@ from mcrcon import MCRcon
 from mcbench.agents.base import Agent, AgentRunContext, AgentSpec
 from mcbench.core.runner import run_task
 from mcbench.core.slot import Slot
-from mcbench.core.task import RunConfig, Task
+from mcbench.core.base_task import RunConfig, Task
 from mcbench.core.trace import FinalState, Trace, TraceEvent
 
 
@@ -37,7 +37,7 @@ class FakeTask(Task):
         self.commands = commands
 
     def default_config_path(self) -> Path:
-        return Path("config.yaml")
+        return Path("default.yaml")
 
     def load_config(self, path: str | Path) -> RunConfig:
         return RunConfig()

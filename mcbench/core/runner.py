@@ -26,7 +26,7 @@ from mcbench.recording.recorder import (
     wait_for_settle,
 )
 from mcbench.recording.replay import export_mcpr
-from mcbench.core.task import Task, RunConfig
+from mcbench.core.base_task import Task, RunConfig
 from mcbench.core.container import _start_slot, _stop_slot
 from mcbench.core.slot import Slot
 from mcbench.core.trace import Trace, TraceEvent

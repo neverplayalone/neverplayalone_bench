@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 import unittest
 
-from mcbench.tasks.resource_gathering.config import (
+from mcbench.tasks.resource_gathering.config_schema import (
     TaskScoringConfig,
     ResourceGatheringTaskConfig,
     ResourceTarget,
@@ -12,11 +12,11 @@ from mcbench.tasks.resource_gathering.scoring import (
     _distance_multiplier,
     score_resource_gathering,
 )
-from mcbench.tasks.resource_gathering.world import _kit_item_stack
-from mcbench.core.task import KitItem
+from mcbench.tasks.resource_gathering.environment import _kit_item_stack
+from mcbench.core.base_task import KitItem
 from mcbench.core.slot import Slot, _random_rcon_password
 from mcbench.core.trace import FinalState, Trace, TraceEvent
-from mcbench.minecraft.world import _prepare_playable_spawn
+from mcbench.minecraft.spawn import prepare_playable_spawn
 
 
 def _config(duration_seconds: int = 1200) -> ResourceGatheringTaskConfig:
@@ -154,7 +154,7 @@ class TaskScoringTest(unittest.TestCase):
         mcr = FakeRcon()
         mcr.blocks[(12, 71, -9)] = "minecraft:grass_block"
 
-        spawn_pos = _prepare_playable_spawn(mcr, "BenchmarkBot")
+        spawn_pos = prepare_playable_spawn(mcr, "BenchmarkBot")
 
         self.assertEqual(spawn_pos, (12, 72, -9))
         self.assertIn("gamerule spawnRadius 0", mcr.commands)

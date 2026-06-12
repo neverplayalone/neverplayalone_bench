@@ -15,7 +15,7 @@ from mcbench.core.batch import (
     parse_agent_assignment,
     run_evaluation_batch,
 )
-from mcbench.core.task import USERNAME, Task, KitItem, RunConfig
+from mcbench.core.base_task import USERNAME, Task, KitItem, RunConfig
 from mcbench.core.runner import run_task
 from mcbench.core.slot import Slot
 from mcbench.core.trace import FinalState, Trace, TraceEvent, parse_event_line

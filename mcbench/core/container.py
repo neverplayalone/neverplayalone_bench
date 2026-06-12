@@ -8,7 +8,7 @@ import subprocess
 from pathlib import Path
 
 from mcbench.paths import DOCKER_DIR
-from mcbench.core.task import RunConfig
+from mcbench.core.base_task import RunConfig
 from mcbench.core.slot import Slot
 
 # world_preset id provided by the datapack we write for single-biome worlds.

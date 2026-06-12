@@ -105,7 +105,7 @@ def _batch_options(func):
             "config_path",
             type=click.Path(path_type=Path),
             default=None,
-            help="Run config (default: the task's bundled config.yaml).",
+            help="Run config (default: the task's bundled default.yaml).",
         ),
         click.option("--seed", type=int, required=True, help="Deterministic instance seed."),
         click.option("--instance-id", default=None, help="Optional explicit instance id."),
