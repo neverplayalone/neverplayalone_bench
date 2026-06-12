@@ -32,8 +32,12 @@ where = ["."]
 include = ["mcbench*"]
 
 [tool.setuptools.package-data]
-# Each competition bundles its default config + catalog as package data.
-"mcbench.competitions.resource_gathering" = ["configs/*.yaml"]
+"mcbench.tasks.resource_gathering" = ["configs/*.yaml"]
+"mcbench.recording" = [
+    "sidecar/*.js",
+    "sidecar/package.json",
+    "sidecar/package-lock.json",
+]
 
 [tool.ruff]
 line-length = 100
