@@ -86,12 +86,3 @@ def rcon_session(
     raise TimeoutError(
         f"RCON not reachable on {host}:{port} after {connect_timeout}s (last: {last_err})"
     ) from last_err
-
-
-def run_commands(mcr: MCRcon, commands: list[str]) -> list[str]:
-    """Run a batch of commands and return their responses."""
-    out: list[str] = []
-    for cmd in commands:
-        cmd = cmd.lstrip("/")
-        out.append(mcr.command(cmd))
-    return out

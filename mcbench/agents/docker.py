@@ -112,46 +112,29 @@ class DockerAgent(Agent):
             raise NotADirectoryError(
                 f"docker mode needs an agent directory (with index.js), got {agent_dir}"
             )
-        return [
-            "docker",
-            "run",
-            "--rm",
-            "--name",
-            self.container_name,
-            # --- isolation ---
-            "--cap-drop",
-            "ALL",
-            "--security-opt",
-            "no-new-privileges",
-            "--read-only",
-            "--tmpfs",
-            "/tmp:rw,size=64m",
-            "--pids-limit",
-            str(self.pids_limit),
-            "--memory",
-            self.memory,
-            # --- code in, read-only ---
-            "-v",
-            f"{agent_dir}:/agent:ro",
-            "-w",
-            "/agent",
-            # --- reach only the slot server over the dedicated Docker network ---
-            "--network",
-            self.network_name,
-            "-e",
-            f"MCBENCH_HOST={self.server_host}",
-            "-e",
-            f"MCBENCH_PORT={self.server_port}",
-            "-e",
-            f"MCBENCH_USERNAME={ctx.username}",
-            "-e",
-            f"MCBENCH_GOAL={ctx.goal}",
-            "-e",
-            f"MCBENCH_TIMEOUT={ctx.timeout_seconds}",
-            image,
-            "node",
-            "index.js",
-        ]
+        # Connection + task briefing the agent reads from the environment.
+        env = {
+            "MCBENCH_HOST": self.server_host,
+            "MCBENCH_PORT": str(self.server_port),
+            "MCBENCH_USERNAME": ctx.username,
+            "MCBENCH_GOAL": ctx.goal,
+            "MCBENCH_TIMEOUT": str(ctx.timeout_seconds),
+        }
+
+        cmd = ["docker", "run", "--rm", "--name", self.container_name]
+        # Isolation: no capabilities, no privilege escalation, read-only rootfs
+        # (only a small tmpfs /tmp), and pid/memory caps.
+        cmd += ["--cap-drop", "ALL", "--security-opt", "no-new-privileges"]
+        cmd += ["--read-only", "--tmpfs", "/tmp:rw,size=64m"]
+        cmd += ["--pids-limit", str(self.pids_limit), "--memory", self.memory]
+        # Agent code mounted read-only; no other host paths are shared.
+        cmd += ["-v", f"{agent_dir}:/agent:ro", "-w", "/agent"]
+        # Reach only the slot server, over its dedicated internal network.
+        cmd += ["--network", self.network_name]
+        for key, value in env.items():
+            cmd += ["-e", f"{key}={value}"]
+        cmd += [image, "node", "index.js"]
+        return cmd
 
     def run(self, ctx: AgentRunContext) -> Iterator[TraceEvent]:
         image = self.image or ensure_agent_image()

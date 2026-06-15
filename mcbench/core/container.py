@@ -91,56 +91,36 @@ def _start_slot(
         if world_template is None:
             _write_biome_datapack(slot.data_dir, cfg.biome)
 
-    cmd = [
-        "docker",
-        "run",
-        "-d",
-        "--name",
-        slot.container_name,
-        "-p",
-        f"{slot.game_port}:25565",
-        # RCON is the score oracle — publish it on loopback only so it is never
-        # reachable off-host, and pair that with the per-slot random password.
-        "-p",
-        f"{slot.host}:{slot.rcon_port}:25575",
-        "-v",
-        f"{slot.data_dir}:/data",
-        "-v",
-        f"{DOCKER_DIR / 'bukkit.yml'}:/data/bukkit.yml:ro",
-        "-e",
-        "EULA=TRUE",
-        "-e",
-        "TYPE=PAPER",
-        "-e",
-        f"VERSION={cfg.minecraft_version}",
-        "-e",
-        f"MEMORY={cfg.memory}",
-        "-e",
-        "ONLINE_MODE=FALSE",
-        "-e",
-        "ENABLE_RCON=TRUE",
-        "-e",
-        f"RCON_PASSWORD={slot.rcon_password}",
-        "-e",
-        "RCON_PORT=25575",
-        "-e",
-        "MODE=survival",
-        "-e",
-        f"DIFFICULTY={cfg.difficulty}",
-        "-e",
-        f"LEVEL_TYPE={level_type}",
-        "-e",
-        f"GENERATE_STRUCTURES={str(cfg.generate_structures).upper()}",
-        "-e",
-        "SPAWN_PROTECTION=0",
-        "-e",
-        "VIEW_DISTANCE=10",
-        "-e",
-        "ALLOW_FLIGHT=TRUE",
-        "-e",
-        f"SEED={cfg.seed}",
-        "itzg/minecraft-server:latest",
-    ]
+    # Server config the itzg/minecraft-server image reads from the environment.
+    env = {
+        "EULA": "TRUE",
+        "TYPE": "PAPER",
+        "VERSION": cfg.minecraft_version,
+        "MEMORY": cfg.memory,
+        "ONLINE_MODE": "FALSE",
+        "ENABLE_RCON": "TRUE",
+        "RCON_PASSWORD": slot.rcon_password,
+        "RCON_PORT": "25575",
+        "MODE": "survival",
+        "DIFFICULTY": cfg.difficulty,
+        "LEVEL_TYPE": level_type,
+        "GENERATE_STRUCTURES": str(cfg.generate_structures).upper(),
+        "SPAWN_PROTECTION": "0",
+        "VIEW_DISTANCE": "10",
+        "ALLOW_FLIGHT": "TRUE",
+        "SEED": str(cfg.seed),
+    }
+
+    cmd = ["docker", "run", "-d", "--name", slot.container_name]
+    cmd += ["-p", f"{slot.game_port}:25565"]
+    # RCON is the score oracle — publish it on loopback only so it is never
+    # reachable off-host, and pair that with the per-slot random password.
+    cmd += ["-p", f"{slot.host}:{slot.rcon_port}:25575"]
+    cmd += ["-v", f"{slot.data_dir}:/data"]
+    cmd += ["-v", f"{DOCKER_DIR / 'bukkit.yml'}:/data/bukkit.yml:ro"]
+    for key, value in env.items():
+        cmd += ["-e", f"{key}={value}"]
+    cmd += ["itzg/minecraft-server:latest"]
     try:
         _ensure_slot_network(slot)
         _run(cmd, f"starting task slot {slot.slot_id}")
