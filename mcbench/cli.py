@@ -105,7 +105,7 @@ def _batch_options(func):
             "config_path",
             type=click.Path(path_type=Path),
             default=None,
-            help="Run config (default: the task's bundled config.yaml).",
+            help="Run config (default: the task's bundled default.yaml).",
         ),
         click.option("--seed", type=int, required=True, help="Deterministic instance seed."),
         click.option("--instance-id", default=None, help="Optional explicit instance id."),
@@ -154,14 +154,6 @@ def run_cmd(task_id: str, agents: tuple[str, ...], **kwargs) -> None:
     sandboxed in Docker by default; pass --normal to run them as host subprocesses.
     """
     _run_batch(task_id=task_id, agent_assignments=agents, **kwargs)
-
-
-@main.command("resource-gather")
-@click.argument("agents", nargs=-1, required=True)
-@_batch_options
-def resource_gather_cmd(agents: tuple[str, ...], **kwargs) -> None:
-    """Alias for `run --task resource_gathering_v1`."""
-    _run_batch(task_id="resource_gathering_v1", agent_assignments=agents, **kwargs)
 
 
 @main.command("build-agent-image")

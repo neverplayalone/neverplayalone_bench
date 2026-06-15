@@ -1,4 +1,4 @@
-"""The Task plugin interface and the shared run configuration.
+"""Base task types and shared run configuration.
 
 The engine in :mod:`mcbench.core` knows nothing about any specific task
 (logs, crafting, hunting, ...). It drives whatever ``Task`` it is given
@@ -75,7 +75,7 @@ class Task(ABC):
 
     @abstractmethod
     def default_config_path(self) -> Path:
-        """Bundled default config (configs/config.yaml) — settings + task catalog."""
+        """Bundled default config (configs/default.yaml) — settings + task catalog."""
 
     @abstractmethod
     def load_config(self, path: str | Path) -> RunConfig:

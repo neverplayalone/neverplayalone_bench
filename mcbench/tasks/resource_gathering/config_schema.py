@@ -1,13 +1,13 @@
-"""Run config, instance catalog, and scoring models for resource gathering.
+"""Configuration schema for the resource-gathering task.
 
-All loaded from the single bundled ``configs/config.yaml``.
+The default values are loaded from the bundled ``configs/default.yaml``.
 """
 
 from __future__ import annotations
 
 from pydantic import BaseModel, Field, field_validator
 
-from mcbench.core.task import KitItem, RunConfig
+from mcbench.core.base_task import KitItem, RunConfig
 
 
 class ResourceTarget(BaseModel):
@@ -79,7 +79,7 @@ class ResourceCatalogEntry(BaseModel):
 
 
 class ResourceCatalog(BaseModel):
-    """The menu of tasks; the seed picks one entry to form the instance."""
+    """The menu of resource targets; the seed picks one entry to form the instance."""
 
     resources: dict[str, ResourceCatalogEntry]
 

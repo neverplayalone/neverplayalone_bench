@@ -8,7 +8,7 @@ needs no other change.
 from __future__ import annotations
 
 from mcbench.tasks.resource_gathering import ResourceGatheringTask
-from mcbench.core.task import Task
+from mcbench.core.base_task import Task
 
 _TASKS: list[Task] = [
     ResourceGatheringTask(),

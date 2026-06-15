@@ -1,7 +1,6 @@
-"""Generic world primitives over RCON: playable-spawn search.
+"""Playable-spawn search and setup over RCON.
 
-Task-agnostic helpers. World rules (gamerules, mobs, kit) live with each
-task.
+Task-agnostic helpers. World rules (gamerules, mobs, kit) live with each task.
 """
 
 from __future__ import annotations
@@ -47,7 +46,7 @@ BAD_SPAWN_BLOCKS = (
 )
 
 
-def _prepare_playable_spawn(
+def prepare_playable_spawn(
     mcr: MCRcon,
     username: str,
 ) -> tuple[int, int, int]:

@@ -1,22 +1,15 @@
-"""Resource-gathering world rules: configure the world, set up the agent, capture.
-
-These are the task-specific RCON interactions. Generic primitives (spawn
-search, RCON parsers) come from ``mcbench.minecraft``.
-"""
+"""Resource-gathering environment setup over RCON."""
 
 from __future__ import annotations
 
 import json
-from typing import Any
 
 from mcrcon import MCRcon
 
-from mcbench.core.task import KitItem
-from mcbench.core.trace import FinalState
-from mcbench.minecraft.commands import _count_item, _parse_pos, _parse_scalar, _read_score
-from mcbench.minecraft.world import _prepare_playable_spawn
-from mcbench.tasks.resource_gathering.config import ResourceGatheringTaskConfig
-from mcbench.tasks.resource_gathering.scoring import _counted_items, _horizontal_distance_from_spawn
+from mcbench.core.base_task import KitItem
+from mcbench.minecraft.commands import _read_score
+from mcbench.minecraft.spawn import prepare_playable_spawn
+from mcbench.tasks.resource_gathering.config_schema import ResourceGatheringTaskConfig
 
 
 def configure_world(mcr: MCRcon, cfg: ResourceGatheringTaskConfig) -> None:
@@ -42,41 +35,13 @@ def setup_agent(
     mcr.command("scoreboard objectives remove mcb_deaths")
     mcr.command("scoreboard objectives add mcb_deaths minecraft.custom:minecraft.deaths")
     death_baseline = _read_score(mcr, cfg.username, "mcb_deaths")
-    spawn_pos = _prepare_playable_spawn(mcr, cfg.username)
+    spawn_pos = prepare_playable_spawn(mcr, cfg.username)
     for kit in cfg.kit:
         _give_kit_item(mcr, cfg.username, kit)
     mcr.command(f"gamemode survival {cfg.username}")
     mcr.command(f"effect give {cfg.username} minecraft:saturation 3 10 true")
     mcr.command(f"deop {cfg.username}")
     return death_baseline, spawn_pos
-
-
-def capture(
-    mcr: MCRcon,
-    cfg: ResourceGatheringTaskConfig,
-    setup_state: tuple[int, tuple[int, int, int] | None] | None,
-) -> dict[str, Any]:
-    death_baseline, spawn_pos = setup_state if setup_state else (0, None)
-    state = FinalState()
-    state.position = _parse_pos(mcr.command(f"data get entity {cfg.username} Pos"))
-    state.health = _parse_scalar(mcr.command(f"data get entity {cfg.username} Health"))
-    state.food = _parse_scalar(mcr.command(f"data get entity {cfg.username} foodLevel"))
-    for resource in cfg.resources:
-        total = 0
-        for item in _counted_items(resource):
-            count = _count_item(mcr, cfg.username, item)
-            state.inventory[item] = count
-            total += count
-        state.inventory[resource.item] = total
-    deaths = max(0, _read_score(mcr, cfg.username, "mcb_deaths") - death_baseline)
-    distance_from_spawn = _horizontal_distance_from_spawn(state.position, spawn_pos)
-    return {
-        "final_state": state,
-        "deaths": deaths,
-        "alive": state.health is not None and state.health > 0,
-        "spawn": {"position": spawn_pos},
-        "distance_from_spawn": distance_from_spawn,
-    }
 
 
 def _give_kit_item(mcr: MCRcon, username: str, kit: KitItem) -> None:

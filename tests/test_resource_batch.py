@@ -8,11 +8,10 @@ from pathlib import Path
 from mcbench.agents import AgentSpec
 from mcbench.tasks.resource_gathering import ResourceGatheringTask
 from mcbench.tasks.resource_gathering.instance import generate_instance
-from mcbench.tasks.resource_gathering.config import (
+from mcbench.tasks.resource_gathering.config_schema import (
     ResourceCatalog,
     ResourceCatalogEntry,
     ResourceGatheringTaskConfig,
-    ResourceTarget,
 )
 from mcbench.core.batch import _cleanup_slot_worlds, create_evaluation_batch
 from mcbench.core.container import _write_biome_datapack

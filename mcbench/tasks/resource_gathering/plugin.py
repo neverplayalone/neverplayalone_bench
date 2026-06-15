@@ -1,4 +1,4 @@
-"""ResourceGatheringTask: wires the resource-gathering plugin to the engine."""
+"""Resource-gathering task plugin: wires task hooks to the generic engine."""
 
 from __future__ import annotations
 
@@ -8,12 +8,13 @@ from typing import Any
 import yaml
 from mcrcon import MCRcon
 
-from mcbench.core.task import Task, RunConfig
+from mcbench.core.base_task import Task, RunConfig
 from mcbench.core.trace import Trace
+from mcbench.tasks.resource_gathering.capture import capture_final_state
+from mcbench.tasks.resource_gathering.config_schema import ResourceGatheringTaskConfig
+from mcbench.tasks.resource_gathering.environment import configure_world, setup_agent
 from mcbench.tasks.resource_gathering.instance import TaskInstance, generate_instance
-from mcbench.tasks.resource_gathering.config import ResourceGatheringTaskConfig
 from mcbench.tasks.resource_gathering.scoring import score_resource_gathering
-from mcbench.tasks.resource_gathering.world import capture, configure_world, setup_agent
 
 _CONFIG_DIR = Path(__file__).resolve().parent / "configs"
 
@@ -22,7 +23,7 @@ class ResourceGatheringTask(Task):
     id = "resource_gathering_v1"
 
     def default_config_path(self) -> Path:
-        return _CONFIG_DIR / "config.yaml"
+        return _CONFIG_DIR / "default.yaml"
 
     def load_config(self, path: str | Path) -> ResourceGatheringTaskConfig:
         raw = yaml.safe_load(Path(path).read_text()) or {}
@@ -46,7 +47,7 @@ class ResourceGatheringTask(Task):
         return cfg.goal
 
     def capture(self, mcr: MCRcon, cfg: RunConfig, setup_state: Any) -> dict[str, Any]:
-        return capture(mcr, cfg, setup_state)
+        return capture_final_state(mcr, cfg, setup_state)
 
     def score(self, cfg: RunConfig, trace: Trace, snapshot: dict[str, Any]) -> dict[str, Any]:
         return score_resource_gathering(cfg, trace, snapshot)

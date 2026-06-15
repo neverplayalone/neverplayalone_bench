@@ -21,7 +21,7 @@ from mcbench.minecraft.rcon import rcon_session
 from mcbench.minecraft.server import wait_for_ready
 from mcbench.paths import RESULTS_DIR
 from mcbench.recording.recorder import RecordOptions
-from mcbench.core.task import Task, RunConfig
+from mcbench.core.base_task import Task, RunConfig
 from mcbench.core.container import _start_slot, _stop_slot
 from mcbench.core.runner import run_task
 from mcbench.core.slot import Slot

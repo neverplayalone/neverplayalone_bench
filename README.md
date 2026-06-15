@@ -20,9 +20,6 @@ mcbench run log_gatherer=agents_examples/log_gatherer \
   --record
 ```
 
-`mcbench resource-gather` is a shorthand alias for
-`mcbench run --task resource_gathering_v1`.
-
 Multiple agents can be evaluated in parallel by passing multiple positional
 agent assignments:
 
@@ -38,8 +35,8 @@ trusted local development, where agents run directly as host subprocesses.
 
 ## Task Instance Model
 
-Each task bundles a single config file with its code at
-`mcbench/tasks/<task>/configs/config.yaml`. It holds the run settings (version,
+Each task bundles a default config file with its code at
+`mcbench/tasks/<task>/configs/default.yaml`. It holds the run settings (version,
 memory, duration, world_size, difficulty, kit, scoring) and the instance
 `catalog` — the menu of resource targets the seed picks from. The default
 starter kit intentionally uses unenchanted netherite tools, keeping
@@ -118,17 +115,23 @@ mcbench/                   Python package
   registry.py              Task registry (id -> Task)
   paths.py                 Filesystem locations
   core/                    Generic engine (task-agnostic)
-    task.py                Task ABC + shared RunConfig / KitItem
+    base_task.py           Task ABC + shared RunConfig / KitItem
     runner.py              Single-slot run loop (drives a Task)
     batch.py               World template + parallel slots
     slot.py  container.py  Slot definition / Docker container lifecycle
     trace.py               Trace + final-state models
-  minecraft/               Server interaction (rcon, server, world, commands)
+  minecraft/               Server interaction (rcon, server, spawn, commands)
   recording/               Recorder wrapper, ReplayMod export, Node sidecar/
   agents/                  Agent execution adapters
   tasks/
-    resource_gathering/    v1 task: config, instance generation, scoring,
-      configs/             world setup, + bundled config.yaml
+    resource_gathering/    v1 task plugin
+      plugin.py            Task hook implementation
+      config_schema.py     Config models and validation
+      instance.py          Deterministic generated task instance
+      environment.py       World + agent setup
+      capture.py           Final-state capture
+      scoring.py           Score calculation
+      configs/default.yaml Bundled default config
 agents_examples/
   log_gatherer/            Reference Mineflayer log-gathering agent
 docker/                    Paper server config + Docker agent runtime

@@ -7,7 +7,10 @@ import time
 from typing import Any
 
 from mcbench.core.trace import Trace
-from mcbench.tasks.resource_gathering.config import ResourceGatheringTaskConfig, ResourceTarget
+from mcbench.tasks.resource_gathering.config_schema import (
+    ResourceGatheringTaskConfig,
+    ResourceTarget,
+)
 
 def score_resource_gathering(
     cfg: ResourceGatheringTaskConfig,
@@ -135,5 +138,4 @@ def _resource_count(inventory: dict[str, int], resource: ResourceTarget) -> int:
     if resource.item in inventory:
         return inventory.get(resource.item, 0)
     return sum(inventory.get(item, 0) for item in _counted_items(resource))
-
 
