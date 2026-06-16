@@ -13,10 +13,10 @@ from mcbench.tasks.resource_gathering.scoring import (
     score_resource_gathering,
 )
 from mcbench.tasks.resource_gathering.environment import _kit_item_stack
-from mcbench.core.base_task import KitItem
+from mcbench.core.task import KitItem
 from mcbench.core.slot import Slot, _random_rcon_password
 from mcbench.core.trace import FinalState, Trace, TraceEvent
-from mcbench.minecraft.spawn import prepare_playable_spawn
+from mcbench.infra.minecraft.spawn import prepare_playable_spawn
 
 
 def _config(duration_seconds: int = 1200) -> ResourceGatheringTaskConfig:

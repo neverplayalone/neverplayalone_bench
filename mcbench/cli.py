@@ -7,7 +7,7 @@ from pathlib import Path
 import click
 from rich.console import Console
 
-from mcbench.recording.replay import export_mcpr
+from mcbench.infra.recording.replay import export_mcpr
 
 console = Console()
 
@@ -53,8 +53,8 @@ def _run_batch(
     keep_slots: bool,
     normal: bool,
 ) -> None:
-    from mcbench.core import create_evaluation_batch, parse_agent_assignment, run_evaluation_batch
-    from mcbench.registry import get_task
+    from mcbench.engine import create_evaluation_batch, parse_agent_assignment, run_evaluation_batch
+    from mcbench.engine.registry import get_task
 
     try:
         task = get_task(task_id)
@@ -165,7 +165,7 @@ def run_cmd(task_id: str, agents: tuple[str, ...], **kwargs) -> None:
 @main.command("build-agent-image")
 def build_agent_image_cmd() -> None:
     """Build the sandbox runtime image used by Docker agent mode (the default)."""
-    from mcbench.agents import ensure_agent_image
+    from mcbench.infra.agents import ensure_agent_image
 
     try:
         tag = ensure_agent_image()

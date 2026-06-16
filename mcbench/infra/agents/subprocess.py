@@ -20,8 +20,8 @@ from pathlib import Path
 from typing import Iterator
 
 from mcbench.core.trace import TraceEvent
-from mcbench.agents.base import Agent, AgentRunContext
-from mcbench.agents._process_stream import pump_events
+from mcbench.infra.agents.base import Agent, AgentRunContext
+from mcbench.infra.agents._process_stream import pump_events
 
 
 def _detect_launch(path: Path) -> list[str]:

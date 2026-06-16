@@ -12,29 +12,26 @@ import shutil
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from rich.console import Console
 
-from mcbench.minecraft.rcon import rcon_session
-from mcbench.minecraft.server import ServerConfig, wait_for_ready
+from mcbench.infra.minecraft.rcon import rcon_session
+from mcbench.infra.minecraft.server import wait_for_ready
 from mcbench.paths import RESULTS_DIR
-from mcbench.recording.recorder import (
+from mcbench.infra.recording.recorder import (
     Recorder,
     RecordOptions,
     is_available as recorder_available,
     wait_for_settle,
 )
-from mcbench.recording.replay import export_mcpr
-from mcbench.core.base_task import Task, RunConfig
-from mcbench.core.container import _start_slot, _stop_slot
-from mcbench.core.slot import Slot
+from mcbench.infra.recording.replay import export_mcpr
+from mcbench.core.task import Task, RunConfig
+from mcbench.infra.minecraft.container import _start_slot, _stop_slot
+from mcbench.core.slot import ServerConfig, Slot
 from mcbench.core.trace import Trace, TraceEvent
-
-# Imported lazily inside _agent_context to avoid an import cycle (mcbench.agents pulls
-# in mcbench.core.trace, which triggers mcbench.core's __init__).
-if TYPE_CHECKING:
-    from mcbench.agents import Agent
+from mcbench.infra.agents import Agent
+from mcbench.infra.agents.base import AgentRunContext
 
 console = Console()
 
@@ -193,8 +190,6 @@ def _run_agent_protocol(
 
 
 def _agent_context(task: Task, cfg: RunConfig, server: ServerConfig):
-    from mcbench.agents.base import AgentRunContext
-
     return AgentRunContext(
         host=server.host,
         port=server.game_port,

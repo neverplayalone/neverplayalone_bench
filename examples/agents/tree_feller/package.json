@@ -1,0 +1,13 @@
+{
+  "name": "mcbench-tree-feller",
+  "version": "0.1.0",
+  "description": "Cluster-harvesting reference agent: batches log collection with mineflayer-collectblock and returns near spawn within a time budget.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "mineflayer": "^4.20.0",
+    "mineflayer-pathfinder": "^2.4.5"
+  }
+}

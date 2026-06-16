@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from mcbench.agents import AgentSpec
+from mcbench.infra.agents import AgentSpec
 from mcbench.tasks.resource_gathering import ResourceGatheringTask
 from mcbench.tasks.resource_gathering.instance import generate_instance
 from mcbench.tasks.resource_gathering.config_schema import (
@@ -13,8 +13,8 @@ from mcbench.tasks.resource_gathering.config_schema import (
     ResourceCatalogEntry,
     ResourceGatheringTaskConfig,
 )
-from mcbench.core.batch import _cleanup_slot_worlds, create_evaluation_batch
-from mcbench.core.container import _write_biome_datapack
+from mcbench.engine.batch import _cleanup_slot_worlds, create_evaluation_batch
+from mcbench.infra.minecraft.container import _write_biome_datapack
 
 
 def _config_with_catalog(resources: dict, **kwargs) -> ResourceGatheringTaskConfig:

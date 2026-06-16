@@ -11,10 +11,10 @@ world state, same spawn state, and same time limit.
 
 ```bash
 pip install -e .
-(cd mcbench/recording/sidecar && npm install)
-(cd agents_examples/log_gatherer && npm install)
+(cd assets/recorder-sidecar && npm install)
+(cd examples/agents/log_gatherer && npm install)
 
-mcbench run log_gatherer=agents_examples/log_gatherer \
+mcbench run examples/agents/log_gatherer \
   --task resource_gathering_v1 \
   --seed 42 \
   --record
@@ -105,24 +105,23 @@ mcbench replay export-mcpr results/<run_id>/packets.jsonl.gz
 
 ## Repository Layout
 
-The package is split into a generic engine (`core/`) and one self-contained
-plugin per task (`tasks/<name>/`). Adding a task means adding a folder that
-implements `Task`; the engine needs no changes.
+The package is layered so dependencies only point downward — `core` ← `infra`
+← `engine`, with `tasks` plugging into `core`/`infra`. Adding a task means adding
+a folder under `tasks/` that implements `Task`; nothing in the engine changes.
 
 ```text
 mcbench/                   Python package
-  cli.py                   CLI (run --task <id>, replay)
-  registry.py              Task registry (id -> Task)
+  cli.py                   CLI (run <agent> --task <id>, replay)
   paths.py                 Filesystem locations
-  core/                    Generic engine (task-agnostic)
-    base_task.py           Task ABC + shared RunConfig / KitItem
-    runner.py              Single-slot run loop (drives a Task)
-    batch.py               World template + parallel slots
-    slot.py  container.py  Slot definition / Docker container lifecycle
+  core/                    Kernel: contracts + data models (depends on nothing internal)
+    task.py                Task ABC + shared RunConfig / KitItem
     trace.py               Trace + final-state models
-  minecraft/               Server interaction (rcon, server, spawn, commands)
-  recording/               Recorder wrapper, ReplayMod export, Node sidecar/
-  agents/                  Agent execution adapters
+    slot.py                Slot + ServerConfig (run addressing)
+  infra/                   Capabilities the engine drives (depend only on core)
+    minecraft/             Server interaction: rcon, server, commands, spawn, container
+    agents/                Agent execution adapters (subprocess + Docker sandbox)
+    recording/             Recorder wrapper + ReplayMod export
+  engine/                  Orchestration: runner, batch, registry (depends on core + infra)
   tasks/
     resource_gathering/    v1 task plugin
       plugin.py            Task hook implementation
@@ -132,7 +131,9 @@ mcbench/                   Python package
       capture.py           Final-state capture
       scoring.py           Score calculation
       configs/default.yaml Bundled default config
-agents_examples/
-  log_gatherer/            Reference Mineflayer log-gathering agent
+examples/
+  agents/                  Reference agents (log_gatherer, tree_feller, random_breaker)
+assets/
+  recorder-sidecar/        Node packet-recorder sidecar (non-Python, runs on host)
 docker/                    Paper server config + Docker agent runtime
 ```

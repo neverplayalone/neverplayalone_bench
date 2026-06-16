@@ -13,23 +13,25 @@ import shutil
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from rich.console import Console
 
-from mcbench.minecraft.rcon import rcon_session
-from mcbench.minecraft.server import wait_for_ready
+from mcbench.infra.minecraft.rcon import rcon_session
+from mcbench.infra.minecraft.server import wait_for_ready
 from mcbench.paths import RESULTS_DIR
-from mcbench.recording.recorder import RecordOptions
-from mcbench.core.base_task import Task, RunConfig
-from mcbench.core.container import _start_slot, _stop_slot
-from mcbench.core.runner import run_task
+from mcbench.infra.recording.recorder import RecordOptions
+from mcbench.core.task import Task, RunConfig
+from mcbench.infra.minecraft.container import _start_slot, _stop_slot
+from mcbench.engine.runner import run_task
 from mcbench.core.slot import Slot
-
-# Imported lazily inside functions to avoid an import cycle: mcbench.agents pulls
-# in mcbench.core.trace, which triggers this package's __init__.
-if TYPE_CHECKING:
-    from mcbench.agents import Agent, AgentSpec
+from mcbench.infra.agents import (
+    Agent,
+    AgentSpec,
+    DockerAgent,
+    SubprocessAgent,
+    ensure_agent_image,
+)
 
 console = Console()
 
@@ -45,8 +47,6 @@ def make_agent(
     development). ``docker`` runs it inside a sandboxed container (for untrusted /
     submitted agent code). This is the single place an agent is constructed.
     """
-    from mcbench.agents import DockerAgent, SubprocessAgent
-
     if mode == "docker":
         return DockerAgent(
             spec,
@@ -128,8 +128,6 @@ class ParallelEvaluator:
         # Build the sandbox image once, before slots fan out, so parallel slots
         # don't each trigger a concurrent build.
         if self.agent_mode == "docker":
-            from mcbench.agents import ensure_agent_image
-
             self._agent_image = ensure_agent_image()
         results: list[dict[str, Any]] = []
         started_at = time.time()
@@ -279,8 +277,6 @@ def _cleanup_slot_worlds(batch: EvaluationBatch) -> None:
 
 
 def parse_agent_assignment(raw: str) -> AgentSpec:
-    from mcbench.agents import AgentSpec
-
     if "=" in raw:
         name, path_raw = raw.split("=", 1)
         if not name:

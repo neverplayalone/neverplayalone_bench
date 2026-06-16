@@ -5,12 +5,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-import mcbench.agents.docker as docker_agent
-from mcbench.agents import DockerAgent, SubprocessAgent
-from mcbench.agents.base import AgentRunContext, AgentSpec
-from mcbench.agents.docker import agent_image_tag
-from mcbench.core.batch import make_agent
-from mcbench.core.container import _ensure_slot_network, _stop_slot
+import mcbench.infra.agents.docker as docker_agent
+from mcbench.infra.agents import DockerAgent, SubprocessAgent
+from mcbench.infra.agents.base import AgentRunContext, AgentSpec
+from mcbench.infra.agents.docker import agent_image_tag
+from mcbench.engine.batch import make_agent
+from mcbench.infra.minecraft.container import _ensure_slot_network, _stop_slot
 from mcbench.core.slot import Slot
 
 
@@ -131,7 +131,7 @@ class SlotNetworkTest(unittest.TestCase):
 
             return Result()
 
-        with patch("mcbench.core.container.subprocess.run", side_effect=fake_run):
+        with patch("mcbench.infra.minecraft.container.subprocess.run", side_effect=fake_run):
             _ensure_slot_network(Slot(slot_id=5))
 
         self.assertEqual(calls[0], ["docker", "network", "inspect", "mcbench-resource-5-net"])
@@ -153,7 +153,7 @@ class SlotNetworkTest(unittest.TestCase):
 
             return Result()
 
-        with patch("mcbench.core.container.subprocess.run", side_effect=fake_run):
+        with patch("mcbench.infra.minecraft.container.subprocess.run", side_effect=fake_run):
             _stop_slot(Slot(slot_id=6))
 
         self.assertEqual(calls[0], ["docker", "rm", "-f", "mcbench-resource-6"])
@@ -176,7 +176,7 @@ class SlotNetworkTest(unittest.TestCase):
 
             return Result()
 
-        with patch("mcbench.core.container.subprocess.run", side_effect=fake_run):
+        with patch("mcbench.infra.minecraft.container.subprocess.run", side_effect=fake_run):
             _stop_slot(Slot(slot_id=7))
 
         self.assertEqual(calls[0], ["docker", "rm", "-f", "mcbench-resource-7"])

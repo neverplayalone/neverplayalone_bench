@@ -7,7 +7,7 @@ from typing import Any
 from mcrcon import MCRcon
 
 from mcbench.core.trace import FinalState
-from mcbench.minecraft.commands import _count_item, _parse_pos, _parse_scalar, _read_score
+from mcbench.infra.minecraft.commands import _count_item, _parse_pos, _parse_scalar, _read_score
 from mcbench.tasks.resource_gathering.config_schema import ResourceGatheringTaskConfig
 from mcbench.tasks.resource_gathering.scoring import _counted_items, _horizontal_distance_from_spawn
 

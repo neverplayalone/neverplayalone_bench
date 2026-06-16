@@ -8,7 +8,7 @@ from typing import Any
 import yaml
 from mcrcon import MCRcon
 
-from mcbench.core.base_task import Task, RunConfig
+from mcbench.core.task import Task, RunConfig
 from mcbench.core.trace import Trace
 from mcbench.tasks.resource_gathering.capture import capture_final_state
 from mcbench.tasks.resource_gathering.config_schema import ResourceGatheringTaskConfig

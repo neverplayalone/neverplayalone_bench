@@ -8,10 +8,10 @@ from unittest.mock import patch
 
 from mcrcon import MCRcon
 
-from mcbench.agents.base import Agent, AgentRunContext, AgentSpec
-from mcbench.core.runner import run_task
+from mcbench.infra.agents.base import Agent, AgentRunContext, AgentSpec
+from mcbench.engine.runner import run_task
 from mcbench.core.slot import Slot
-from mcbench.core.base_task import RunConfig, Task
+from mcbench.core.task import RunConfig, Task
 from mcbench.core.trace import FinalState, Trace, TraceEvent
 
 
@@ -90,10 +90,10 @@ class RunTaskTest(unittest.TestCase):
             agent = FakeAgent()
 
             with (
-                patch("mcbench.core.runner._start_slot") as start_slot,
-                patch("mcbench.core.runner._stop_slot") as stop_slot,
-                patch("mcbench.core.runner.wait_for_ready") as wait_for_ready,
-                patch("mcbench.core.runner.rcon_session", side_effect=fake_rcon_session),
+                patch("mcbench.engine.runner._start_slot") as start_slot,
+                patch("mcbench.engine.runner._stop_slot") as stop_slot,
+                patch("mcbench.engine.runner.wait_for_ready") as wait_for_ready,
+                patch("mcbench.engine.runner.rcon_session", side_effect=fake_rcon_session),
             ):
                 report = run_task(
                     FakeTask(commands),

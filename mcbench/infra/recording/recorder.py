@@ -1,4 +1,4 @@
-"""Sidecar packet recorder process: spawns the Node recorder under recording/sidecar/."""
+"""Sidecar packet recorder process: spawns the Node recorder from assets/recorder-sidecar/."""
 
 from __future__ import annotations
 
@@ -10,7 +10,9 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-RECORDER_DIR = Path(__file__).resolve().parent / "sidecar"
+from mcbench.paths import SIDECAR_DIR
+
+RECORDER_DIR = SIDECAR_DIR
 
 
 def _node_bin() -> str:

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field, field_validator
 
-from mcbench.core.base_task import KitItem, RunConfig
+from mcbench.core.task import KitItem, RunConfig
 
 
 class ResourceTarget(BaseModel):

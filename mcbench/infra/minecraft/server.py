@@ -1,24 +1,15 @@
-"""Server config + readiness probe for a slot's Paper container.
+"""Readiness probe for a slot's Paper server.
 
-The resource-gathering path owns its container lifecycle (see
-``mcbench.container``); this module only holds the RCON-facing ``ServerConfig``
-and a readiness probe.
+``ServerConfig`` (how to reach a server) lives in :mod:`mcbench.core.slot`; this
+module just waits until the server starts answering RCON.
 """
 
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
 
-from mcbench.minecraft.rcon import rcon_session
-
-
-@dataclass
-class ServerConfig:
-    host: str = "127.0.0.1"
-    rcon_port: int = 25575
-    rcon_password: str = "mcbench"
-    game_port: int = 25565
+from mcbench.core.slot import ServerConfig
+from mcbench.infra.minecraft.rcon import rcon_session
 
 
 def wait_for_ready(cfg: ServerConfig | None = None, timeout: float = 120.0) -> None:

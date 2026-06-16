@@ -6,8 +6,18 @@ import secrets
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from mcbench.minecraft.server import ServerConfig
 from mcbench.paths import RESULTS_DIR
+
+
+@dataclass
+class ServerConfig:
+    """How to reach a slot's Paper server over the network (RCON + game port)."""
+
+    host: str = "127.0.0.1"
+    rcon_port: int = 25575
+    rcon_password: str = "mcbench"
+    game_port: int = 25565
+
 
 def _random_rcon_password() -> str:
     """A fresh, unguessable RCON password per slot.

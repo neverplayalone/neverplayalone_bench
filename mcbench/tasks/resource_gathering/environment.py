@@ -6,9 +6,9 @@ import json
 
 from mcrcon import MCRcon
 
-from mcbench.core.base_task import KitItem
-from mcbench.minecraft.commands import _read_score
-from mcbench.minecraft.spawn import prepare_playable_spawn
+from mcbench.core.task import KitItem
+from mcbench.infra.minecraft.commands import _read_score
+from mcbench.infra.minecraft.spawn import prepare_playable_spawn
 from mcbench.tasks.resource_gathering.config_schema import ResourceGatheringTaskConfig
 
 
