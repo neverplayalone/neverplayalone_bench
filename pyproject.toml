@@ -30,16 +30,14 @@ mcbench = "mcbench.cli:main"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["mcbench*"]
-exclude = ["mcbench.recording.sidecar*"]
 
 [tool.setuptools.package-data]
-"mcbench.tasks.resource_gathering" = ["configs/*.yaml"]
-"mcbench.recording" = [
-    "sidecar/*.js",
-    "sidecar/package.json",
-    "sidecar/package-lock.json",
-]
+"mcbench.missions.resource_gathering" = ["configs/*.yaml"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit"]
+addopts = "-ra"

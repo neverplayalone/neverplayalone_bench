@@ -1,44 +1,36 @@
-"""Agent interface. An agent is anything that can connect to the server and emit a trace."""
-
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Iterator
 
-from mcbench.core.trace import TraceEvent
+from mcbench.evaluation.run_trace import TraceEvent
 
 
-@dataclass
+@dataclass(frozen=True)
 class AgentSpec:
-    """Static metadata describing how to launch an agent."""
-
     name: str
-    path: str  # directory or executable
+    path: Path
     extra_args: list[str] | None = None
+    kind: str | None = None
 
 
-@dataclass
+@dataclass(frozen=True)
 class AgentRunContext:
-    """Per-run parameters passed to the agent on startup."""
-
     host: str
     port: int
     username: str
-    goal: str
+    prompt: str
     timeout_seconds: int
 
 
 class Agent(ABC):
-    """Base agent. Implementations wrap a subprocess, a Python coroutine, or an HTTP service."""
-
     def __init__(self, spec: AgentSpec):
         self.spec = spec
 
     @abstractmethod
-    def run(self, ctx: AgentRunContext) -> Iterator[TraceEvent]:
-        """Launch the agent and yield TraceEvents until it exits or the runner cancels."""
+    def run(self, context: AgentRunContext) -> Iterator[TraceEvent]: ...
 
     @abstractmethod
-    def stop(self) -> None:
-        """Best-effort cleanup of the underlying process."""
+    def stop(self) -> None: ...

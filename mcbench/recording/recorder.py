@@ -1,5 +1,3 @@
-"""Sidecar packet recorder process: spawns the Node recorder under recording/sidecar/."""
-
 from __future__ import annotations
 
 import os
@@ -10,7 +8,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-RECORDER_DIR = Path(__file__).resolve().parent / "sidecar"
+from mcbench.config import DEFAULT_RECORDER_USERNAME, RECORDER_DIR
 
 
 def _node_bin() -> str:
@@ -21,19 +19,17 @@ def _node_bin() -> str:
 
 
 @dataclass
-class RecordOptions:
+class RecordingOptions:
     target_username: str
     packet_output: Path | None = None
     packet_manifest: Path | None = None
     replay_output: Path | None = None
-    # Minecraft caps usernames at 16 chars — keep this short.
-    recorder_username: str = "RecorderCam"
+    recorder_username: str = DEFAULT_RECORDER_USERNAME
     host: str = "127.0.0.1"
     port: int = 25565
 
 
 def is_available() -> tuple[bool, str | None]:
-    """Quick preflight: report whether the packet recorder can run on this machine."""
     if not (RECORDER_DIR / "node_modules").exists():
         return False, (
             f"recorder Node deps missing — run: "
@@ -63,33 +59,33 @@ def is_available() -> tuple[bool, str | None]:
 
 
 class Recorder:
-    """Manages the recorder subprocess lifecycle."""
-
-    def __init__(self, opts: RecordOptions):
-        self.opts = opts
-        self.proc: subprocess.Popen | None = None
+    def __init__(self, options: RecordingOptions):
+        self.options = options
+        self.child_process: subprocess.Popen | None = None
         self._stderr_thread: threading.Thread | None = None
         self._stderr_lines: list[str] = []
 
     def start(self) -> None:
-        packet_output = self.opts.packet_output or Path("packets.jsonl.gz").resolve()
-        packet_manifest = self.opts.packet_manifest or packet_output.with_name(
+        packet_output = self.options.packet_output or Path("packets.jsonl.gz").resolve()
+        packet_manifest = self.options.packet_manifest or packet_output.with_name(
             "packets.manifest.json"
         )
-        self.opts.packet_output = packet_output
-        self.opts.packet_manifest = packet_manifest
-        self.opts.replay_output = self.opts.replay_output or packet_output.with_name("recording.mcpr")
+        self.options.packet_output = packet_output
+        self.options.packet_manifest = packet_manifest
+        self.options.replay_output = (
+            self.options.replay_output or packet_output.with_name("recording.mcpr")
+        )
         env = {
             **os.environ,
-            "MCBENCH_REC_HOST": self.opts.host,
-            "MCBENCH_REC_PORT": str(self.opts.port),
-            "MCBENCH_REC_USERNAME": self.opts.recorder_username,
-            "MCBENCH_REC_TARGET": self.opts.target_username,
-            "MCBENCH_REC_PACKET_OUTPUT": str(packet_output),
-            "MCBENCH_REC_PACKET_MANIFEST": str(packet_manifest),
+            "MCBENCH_RECORDER_HOST": self.options.host,
+            "MCBENCH_RECORDER_PORT": str(self.options.port),
+            "MCBENCH_RECORDER_USERNAME": self.options.recorder_username,
+            "MCBENCH_RECORDER_TARGET": self.options.target_username,
+            "MCBENCH_RECORDER_PACKET_OUTPUT": str(packet_output),
+            "MCBENCH_RECORDER_PACKET_MANIFEST": str(packet_manifest),
         }
         packet_output.parent.mkdir(parents=True, exist_ok=True)
-        self.proc = subprocess.Popen(
+        self.child_process = subprocess.Popen(
             [_node_bin(), "index.js"],
             cwd=RECORDER_DIR,
             env=env,
@@ -102,27 +98,26 @@ class Recorder:
         self._stderr_thread.start()
 
     def stop(self, grace_seconds: float = 3.0) -> None:
-        if not self.proc:
+        if not self.child_process:
             return
-        if self.proc.poll() is None:
+        if self.child_process.poll() is None:
             try:
-                self.proc.send_signal(signal.SIGTERM)
-                self.proc.wait(timeout=grace_seconds)
+                self.child_process.send_signal(signal.SIGTERM)
+                self.child_process.wait(timeout=grace_seconds)
             except subprocess.TimeoutExpired:
-                self.proc.kill()
-                self.proc.wait(timeout=2)
-        self.proc = None
+                self.child_process.kill()
+                self.child_process.wait(timeout=2)
+        self.child_process = None
 
     @property
     def stderr_log(self) -> list[str]:
         return list(self._stderr_lines)
 
     def _drain_stderr(self) -> None:
-        assert self.proc and self.proc.stderr
-        for line in self.proc.stderr:
+        assert self.child_process and self.child_process.stderr
+        for line in self.child_process.stderr:
             self._stderr_lines.append(line.rstrip("\n"))
 
 
 def wait_for_settle(seconds: float = 2.0) -> None:
-    """Give the recorder a moment to connect before the agent acts."""
     time.sleep(seconds)
