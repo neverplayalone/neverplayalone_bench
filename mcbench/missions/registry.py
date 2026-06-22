@@ -1,0 +1,18 @@
+from __future__ import annotations
+
+from mcbench.missions.base import Mission
+from mcbench.missions.resource_gathering import ResourceGatheringMission
+
+_MISSIONS: list[Mission] = [
+    ResourceGatheringMission(),
+]
+
+MISSIONS: dict[str, Mission] = {mission.id: mission for mission in _MISSIONS}
+
+
+def get_mission(mission_id: str) -> Mission:
+    try:
+        return MISSIONS[mission_id]
+    except KeyError:
+        known = ", ".join(sorted(MISSIONS))
+        raise ValueError(f"unknown mission {mission_id!r}; known missions: {known}") from None

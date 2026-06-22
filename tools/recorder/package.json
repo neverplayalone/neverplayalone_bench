@@ -1,0 +1,10 @@
+{
+  "name": "mcbench-recorder",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sidecar recorder: joins as spectator and writes ReplayMod-compatible packet logs.",
+  "main": "index.js",
+  "dependencies": {
+    "mineflayer": "^4.20.0"
+  }
+}

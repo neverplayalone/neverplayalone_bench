@@ -1,0 +1,75 @@
+id: resource_gathering
+minecraft_version: "1.21.11"
+world_type: normal
+generate_structures: true
+difficulty: peaceful
+memory: 2G
+duration_seconds: 120
+world_size: 5000
+spawn_time: 0
+username: mcbench_agent
+
+starting_items:
+  - item: netherite_pickaxe
+    count: 1
+  - item: netherite_axe
+    count: 1
+  - item: netherite_shovel
+    count: 1
+  - item: cooked_beef
+    count: 64
+  - item: torch
+    count: 64
+  - item: water_bucket
+    count: 1
+    slot: weapon.offhand
+
+scoring:
+  distance_bands:
+    - [10, 1.00]
+    - [30, 0.90]
+    - [100, 0.75]
+    - [250, 0.60]
+    - [500, 0.50]
+    - [1000, 0.40]
+    - [2000, 0.30]
+  distance_floor_mult: 0.20
+
+menu:
+  resources:
+    logs:
+      display_name: logs
+      biome: minecraft:forest
+      items:
+        - oak_log
+        - birch_log
+        - spruce_log
+        - jungle_log
+        - acacia_log
+        - dark_oak_log
+        - mangrove_log
+        - cherry_log
+      target_range: [100, 150]
+      points: 100
+
+    cobblestone:
+      display_name: cobblestone
+      items:
+        - cobblestone
+      target_range: [50, 100]
+      points: 100
+
+    coal:
+      display_name: coal
+      items:
+        - coal
+      target_range: [8, 64]
+      points: 100
+
+    sand:
+      display_name: sand
+      items:
+        - sand
+        - red_sand
+      target_range: [50, 100]
+      points: 100
