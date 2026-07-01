@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any, Literal
@@ -65,7 +66,7 @@ def evaluate_single_agent(
     base_config = _load_mission_config(mission, config_path)
     task = mission.generate_task(base_config, seed)
     run_agent = _normalize_agent(agent)
-    root_output_dir = (output_dir or RESULTS_DIR / mission_id / task.task_id).resolve()
+    root_output_dir = _default_run_output_dir(output_dir)
     root_output_dir.mkdir(parents=True, exist_ok=True)
     task = mission.materialize_task(base_config, task, root_output_dir)
     mission_config = mission.build_mission_config(base_config, task)
@@ -117,7 +118,7 @@ def evaluate_multiple_agents(
     task = mission.generate_task(base_config, seed)
     normalized_agents = [_normalize_agent(agent) for agent in agents]
     _assert_unique_agent_names(normalized_agents)
-    root_output_dir = (output_dir or RESULTS_DIR / mission_id / task.task_id).resolve()
+    root_output_dir = _default_run_output_dir(output_dir)
     root_output_dir.mkdir(parents=True, exist_ok=True)
     task = mission.materialize_task(base_config, task, root_output_dir)
     mission_config = mission.build_mission_config(base_config, task)
@@ -215,6 +216,16 @@ def _load_mission_config(mission, config_path: Path | None) -> MissionConfig:
     if not selected_config_path.exists():
         raise ValueError(f"config file does not exist: {selected_config_path}")
     return mission.load_config(selected_config_path)
+
+
+def _default_run_output_dir(output_dir: Path | None) -> Path:
+    if output_dir is not None:
+        return output_dir.resolve()
+    return (RESULTS_DIR / _run_id_now()).resolve()
+
+
+def _run_id_now() -> str:
+    return datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
 def _normalize_agent(agent: AgentSpec | str | Path) -> AgentSpec:

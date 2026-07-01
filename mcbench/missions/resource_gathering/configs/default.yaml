@@ -5,7 +5,7 @@ generate_structures: true
 difficulty: peaceful
 memory: 2G
 duration_seconds: 120
-world_size: 5000
+world_size: 10000
 spawn_time: 0
 username: mcbench_agent
 
