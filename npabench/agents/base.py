@@ -14,6 +14,10 @@ class AgentSpec:
     path: Path
     extra_args: list[str] | None = None
     kind: str | None = None
+    # Extra environment variables injected into the agent's sandbox container.
+    # The subnet uses this to route LLM calls through its egress proxy; core
+    # NPABENCH_* variables always take precedence over anything set here.
+    env: dict[str, str] | None = None
 
 
 @dataclass(frozen=True)
