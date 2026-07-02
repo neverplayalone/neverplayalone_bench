@@ -118,6 +118,8 @@ def start_agent_run_slot(
             ["docker", "network", "connect", agent_run_slot.network_name, agent_run_slot.container_name],
             f"connecting task slot {agent_run_slot.slot_id} to dedicated network",
         )
+        for sidecar in agent_run_slot.sidecar_containers:
+            connect_sidecar(agent_run_slot.network_name, sidecar)
     except Exception:
         stop_agent_run_slot(agent_run_slot, quiet=True)
         raise
@@ -134,6 +136,15 @@ def stop_agent_run_slot(agent_run_slot: AgentRunSlot, quiet: bool = False) -> No
         raise RuntimeError(
             f"docker rm -f {agent_run_slot.container_name} failed\n"
             f"--- stderr ---\n{result.stderr}\n--- stdout ---\n{result.stdout}"
+        )
+    # Sidecars must be detached before the network can be removed; they are
+    # long-lived (owned by the caller) so only disconnect, never remove them.
+    for sidecar in agent_run_slot.sidecar_containers:
+        subprocess.run(
+            ["docker", "network", "disconnect", "-f", agent_run_slot.network_name, sidecar],
+            check=False,
+            capture_output=True,
+            text=True,
         )
     network_result = subprocess.run(
         ["docker", "network", "rm", agent_run_slot.network_name],
@@ -164,6 +175,24 @@ def ensure_run_slot_network(agent_run_slot: AgentRunSlot) -> None:
     run_docker_command(
         ["docker", "network", "create", "--internal", agent_run_slot.network_name],
         f"creating dedicated network for slot {agent_run_slot.slot_id}",
+    )
+
+
+def connect_sidecar(network_name: str, container_name: str) -> None:
+    result = subprocess.run(
+        ["docker", "network", "connect", network_name, container_name],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0:
+        return
+    # Idempotent: a sidecar already on the network is not an error.
+    if "already exists" in result.stderr or "already connected" in result.stderr:
+        return
+    raise RuntimeError(
+        f"connecting sidecar {container_name} to {network_name} failed\n"
+        f"--- stderr ---\n{result.stderr}\n--- stdout ---\n{result.stdout}"
     )
 
 

@@ -61,6 +61,7 @@ def evaluate_single_agent(
     agent_mode: AgentMode = AgentMode.SANDBOXED,
     base_game_port: int = DEFAULT_BASE_GAME_PORT,
     base_rcon_port: int = DEFAULT_BASE_RCON_PORT,
+    sidecar_containers: tuple[str, ...] = (),
 ) -> AgentRunReport:
     mission = get_mission(mission_id)
     base_config = _load_mission_config(mission, config_path)
@@ -84,6 +85,7 @@ def evaluate_single_agent(
         base_game_port=base_game_port,
         base_rcon_port=base_rcon_port,
         data_root=agent_output_dir / "_slot",
+        sidecar_containers=sidecar_containers,
     )
     return run_single_evaluation(
         mission,
@@ -110,6 +112,7 @@ def evaluate_multiple_agents(
     max_parallel: int = 1,
     base_game_port: int = DEFAULT_BASE_GAME_PORT,
     base_rcon_port: int = DEFAULT_BASE_RCON_PORT,
+    sidecar_containers: tuple[str, ...] = (),
 ) -> AgentBatchReport:
     if not agents:
         raise ValueError("evaluate_multiple_agents requires at least one agent")
@@ -136,6 +139,7 @@ def evaluate_multiple_agents(
             base_game_port=base_game_port,
             base_rcon_port=base_rcon_port,
             data_root=(root_output_dir / "agents" / safe_name(agent_spec.name) / "_slot"),
+            sidecar_containers=sidecar_containers,
         )
         for index, agent_spec in enumerate(normalized_agents)
     ]
@@ -235,6 +239,7 @@ def _normalize_agent(agent: AgentSpec | str | Path) -> AgentSpec:
             path=agent.path.resolve(),
             extra_args=agent.extra_args,
             kind=agent.kind,
+            env=agent.env,
         )
     if isinstance(agent, str):
         return parse_agent_assignment(agent)

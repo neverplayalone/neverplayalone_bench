@@ -89,13 +89,16 @@ class SandboxedAgent(Agent):
             raise NotADirectoryError(
                 f"docker mode needs an agent directory (with index.js), got {agent_dir}"
             )
-        env = {
+        core_env = {
             "NPABENCH_HOST": self.server_host,
             "NPABENCH_PORT": str(self.server_port),
             "NPABENCH_AGENT_USERNAME": context.username,
             "NPABENCH_AGENT_PROMPT": context.prompt,
             "NPABENCH_TIMEOUT_SECONDS": str(context.timeout_seconds),
         }
+        # Caller-supplied env (e.g. subnet proxy routing) cannot clobber the
+        # core NPABENCH_* variables the agent runtime depends on.
+        env = {**(self.spec.env or {}), **core_env}
 
         cmd = ["docker", "run", "--rm", "--name", self.container_name]
         cmd += ["--cap-drop", "ALL", "--security-opt", "no-new-privileges"]

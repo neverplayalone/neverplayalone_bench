@@ -28,6 +28,9 @@ class AgentRunSlot:
     rcon_password: str = field(default_factory=random_rcon_password)
     container_prefix: str = "npabench-eval"
     data_root: Path = RESULTS_DIR / "runs"
+    # Extra containers (e.g. a subnet egress proxy) to attach to this slot's
+    # dedicated internal network so the sandboxed agent can reach them.
+    sidecar_containers: tuple[str, ...] = ()
 
     @property
     def game_port(self) -> int:
@@ -66,6 +69,7 @@ class AgentRunSlot:
         base_rcon_port: int = DEFAULT_BASE_RCON_PORT,
         data_root: Path | None = None,
         container_prefix: str = "npabench-eval",
+        sidecar_containers: tuple[str, ...] = (),
     ) -> "AgentRunSlot":
         return cls(
             slot_id=slot_id,
@@ -73,4 +77,5 @@ class AgentRunSlot:
             base_rcon_port=base_rcon_port,
             data_root=data_root or (RESULTS_DIR / "runs"),
             container_prefix=container_prefix,
+            sidecar_containers=sidecar_containers,
         )
