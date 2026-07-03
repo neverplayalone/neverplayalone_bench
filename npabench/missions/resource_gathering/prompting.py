@@ -8,7 +8,10 @@ from pathlib import Path
 
 from npabench.missions.base import PromptMetadata, Task
 
-DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+PROVIDER_BASE_URLS = {
+    "openrouter": "https://openrouter.ai/api/v1",
+    "chutes": "https://llm.chutes.ai/v1",
+}
 PROMPT_SCHEMA_VERSION = "resource_gathering.v3"
 
 PROMPT_EXAMPLES = """Examples:
@@ -75,15 +78,22 @@ def _can_reuse_cached_prompt(task: Task, cached_task: Task) -> bool:
 
 
 def _generate_prompt(task: Task) -> tuple[str, PromptMetadata]:
-    api_key = os.environ.get("OPENROUTER_API_KEY")
+    provider = os.environ.get("NPABENCH_PROMPT_PROVIDER", "openrouter").strip().lower()
+    key_env = "CHUTES_API_KEY" if provider == "chutes" else "OPENROUTER_API_KEY"
+    api_key = os.environ.get(key_env)
     if not api_key:
-        raise RuntimeError("OPENROUTER_API_KEY is required for resource_gathering prompt generation")
+        raise RuntimeError(
+            f"{key_env} is required for resource_gathering prompt generation (provider={provider})"
+        )
     model = os.environ.get("NPABENCH_PROMPT_MODEL")
     if not model:
         raise RuntimeError(
             "NPABENCH_PROMPT_MODEL is required for resource_gathering prompt generation"
         )
-    base_url = os.environ.get("NPABENCH_PROMPT_BASE_URL", DEFAULT_OPENROUTER_BASE_URL).rstrip("/")
+    base_url = (
+        os.environ.get("NPABENCH_PROMPT_BASE_URL")
+        or PROVIDER_BASE_URLS.get(provider, PROVIDER_BASE_URLS["openrouter"])
+    ).rstrip("/")
     temperature = float(os.environ.get("NPABENCH_PROMPT_TEMPERATURE", "0"))
     max_tokens = int(os.environ.get("NPABENCH_PROMPT_MAX_TOKENS", "180"))
     timeout_seconds = float(os.environ.get("NPABENCH_PROMPT_TIMEOUT_SECONDS", "8"))
@@ -129,7 +139,7 @@ def _generate_prompt(task: Task) -> tuple[str, PromptMetadata]:
     if not prompt:
         raise RuntimeError("prompt generation returned an empty response")
     metadata = PromptMetadata(
-        provider="openrouter",
+        provider=provider,
         model=model,
         schema_version=PROMPT_SCHEMA_VERSION,
     )

@@ -18,9 +18,10 @@ const timeoutSec = parseInt(process.env.NPABENCH_TIMEOUT_SECONDS || '1200', 10);
 // LLM proxy (OpenAI-compatible) — injected by the validator when enabled.
 const LLM_BASE_URL = process.env.OPENAI_BASE_URL || process.env.OPENROUTER_BASE_URL || '';
 const LLM_API_KEY = process.env.OPENAI_API_KEY || process.env.OPENROUTER_API_KEY || '';
-// The agent chooses its own model — it must be on the validator's allowlist
-// (NPA_PROXY_ALLOWED_MODELS) or the proxy rejects the call with 403.
-const LLM_MODEL = process.env.AGENT_LLM_MODEL || 'openai/gpt-4o-mini';
+// The agent chooses its own model — pick one listed in the subnet's pinned
+// docker/proxy/model_pairs.json (either provider's id works; the proxy rewrites
+// it to the active provider). Models not in that file are rejected with 403.
+const LLM_MODEL = process.env.AGENT_LLM_MODEL || 'deepseek/deepseek-r1';
 
 // Block id -> item id when the mined block drops something else, so progress
 // is counted correctly (mining stone yields cobblestone, etc.).
