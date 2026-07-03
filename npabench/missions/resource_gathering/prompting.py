@@ -8,7 +8,7 @@ from pathlib import Path
 
 from npabench.missions.base import PromptMetadata, Task
 
-OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions"
+DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 PROMPT_SCHEMA_VERSION = "resource_gathering.v3"
 
 PROMPT_EXAMPLES = """Examples:
@@ -75,14 +75,15 @@ def _can_reuse_cached_prompt(task: Task, cached_task: Task) -> bool:
 
 
 def _generate_prompt(task: Task) -> tuple[str, PromptMetadata]:
-    api_key = os.environ.get("OPENAI_API_KEY")
+    api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
-        raise RuntimeError("OPENAI_API_KEY is required for resource_gathering prompt generation")
+        raise RuntimeError("OPENROUTER_API_KEY is required for resource_gathering prompt generation")
     model = os.environ.get("NPABENCH_PROMPT_MODEL")
     if not model:
         raise RuntimeError(
             "NPABENCH_PROMPT_MODEL is required for resource_gathering prompt generation"
         )
+    base_url = os.environ.get("NPABENCH_PROMPT_BASE_URL", DEFAULT_OPENROUTER_BASE_URL).rstrip("/")
     temperature = float(os.environ.get("NPABENCH_PROMPT_TEMPERATURE", "0"))
     max_tokens = int(os.environ.get("NPABENCH_PROMPT_MAX_TOKENS", "180"))
     timeout_seconds = float(os.environ.get("NPABENCH_PROMPT_TIMEOUT_SECONDS", "8"))
@@ -107,7 +108,7 @@ def _generate_prompt(task: Task) -> tuple[str, PromptMetadata]:
         ],
     }
     request = urllib.request.Request(
-        OPENAI_CHAT_COMPLETIONS_URL,
+        f"{base_url}/chat/completions",
         data=json.dumps(body).encode("utf-8"),
         headers={
             "Authorization": f"Bearer {api_key}",
@@ -128,7 +129,7 @@ def _generate_prompt(task: Task) -> tuple[str, PromptMetadata]:
     if not prompt:
         raise RuntimeError("prompt generation returned an empty response")
     metadata = PromptMetadata(
-        provider="openai",
+        provider="openrouter",
         model=model,
         schema_version=PROMPT_SCHEMA_VERSION,
     )
