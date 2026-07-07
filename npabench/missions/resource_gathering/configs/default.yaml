@@ -4,7 +4,7 @@ world_type: normal
 generate_structures: true
 difficulty: peaceful
 memory: 2G
-duration_seconds: 120
+duration_seconds: 600
 world_size: 10000
 spawn_time: 0
 username: npabench_agent
@@ -22,8 +22,6 @@ starting_items:
     count: 64
   - item: torch
     count: 64
-  - item: water_bucket
-    count: 1
     slot: weapon.offhand
 
 scoring:
