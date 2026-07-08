@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime
@@ -16,6 +17,9 @@ from npabench.evaluation.run_slot import AgentRunSlot
 from npabench.evaluation.single_runner import run_single_evaluation
 from npabench.missions.base import MissionConfig
 from npabench.missions.registry import get_mission
+from npabench.recording.recorder import RECORDER_DIR, is_available as recorder_available
+
+log = logging.getLogger("npabench.evaluate")
 
 
 class AgentMode(Enum):
@@ -48,6 +52,33 @@ class AgentBatchReport:
     minecraft_seed: int
     agents: dict[str, AgentRunReport]
     output_dir: Path
+
+
+def _mission_config_summary(config: MissionConfig) -> dict[str, Any]:
+    data = config.model_dump()
+    prompt = str(data.pop("prompt", ""))
+    starting_items = data.pop("starting_items", [])
+    resources = data.pop("resources", [])
+    scoring = data.pop("scoring", None)
+    menu = data.pop("menu", None)
+    data["prompt_chars"] = len(prompt)
+    data["starting_items_count"] = len(starting_items)
+    data["resources_count"] = len(resources)
+    if isinstance(scoring, dict):
+        data["scoring_distance_bands"] = len(scoring.get("distance_bands", []))
+    if isinstance(menu, dict):
+        data["menu_resources_count"] = len((menu.get("resources") or {}))
+    return data
+
+
+def _recording_summary(record: bool) -> dict[str, Any]:
+    available, reason = recorder_available()
+    return {
+        "requested": record,
+        "available": available,
+        "reason": reason,
+        "recorder_dir": str(RECORDER_DIR),
+    }
 
 
 def evaluate_single_agent(
@@ -117,7 +148,8 @@ def evaluate_multiple_agents(
     if not agents:
         raise ValueError("evaluate_multiple_agents requires at least one agent")
     mission = get_mission(mission_id)
-    base_config = _load_mission_config(mission, config_path)
+    selected_config_path = config_path or mission.default_config_path()
+    base_config = _load_mission_config(mission, selected_config_path)
     task = mission.generate_task(base_config, seed)
     normalized_agents = [_normalize_agent(agent) for agent in agents]
     _assert_unique_agent_names(normalized_agents)
@@ -125,6 +157,21 @@ def evaluate_multiple_agents(
     root_output_dir.mkdir(parents=True, exist_ok=True)
     task = mission.materialize_task(base_config, task, root_output_dir)
     mission_config = mission.build_mission_config(base_config, task)
+    log.info(
+        "bench config mission=%s config_path=%s output_dir=%s mode=%s record=%s recording=%s max_parallel=%s base_game_port=%s base_rcon_port=%s sidecars=%s base_config=%s mission_config=%s",
+        mission_id,
+        selected_config_path,
+        root_output_dir,
+        getattr(agent_mode, "value", agent_mode),
+        record,
+        _recording_summary(record),
+        max_parallel,
+        base_game_port,
+        base_rcon_port,
+        list(sidecar_containers),
+        _mission_config_summary(base_config),
+        _mission_config_summary(mission_config),
+    )
     (root_output_dir / "task.json").write_text(task.model_dump_json(indent=2))
     reference_world_dir = ReferenceWorldBuilder().build(
         mission,
