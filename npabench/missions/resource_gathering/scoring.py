@@ -10,6 +10,8 @@ from npabench.missions.resource_gathering.config_schema import (
     ResourceSpec,
 )
 
+TIME_EFFICIENCY_TIEBREAKER_MAX = 1e-3
+
 
 def score_resource_gathering_run(
     mission_config: ResourceGatheringMissionConfig,
@@ -67,6 +69,9 @@ def score_resource_gathering_run(
         if finished_early
         else 0.0
     )
+    # Preserve the task score as the primary metric and only use time
+    # efficiency to break exact score ties among early-finished runs.
+    ranking_score = total + (time_efficiency * TIME_EFFICIENCY_TIEBREAKER_MAX)
 
     spawned = agent_run_trace.agent_ready_at is not None
     status = "ok" if spawned else "agent_never_spawned"
@@ -75,6 +80,7 @@ def score_resource_gathering_run(
         "agent": agent_run_trace.agent_name,
         "seed": mission_config.seed,
         "score": total,
+        "ranking_score": ranking_score,
         "max_score": max_score,
         "spawned": spawned,
         "status": status,
