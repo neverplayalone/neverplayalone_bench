@@ -128,7 +128,7 @@ def run_single_evaluation(
             task_id=mission_config.id,
             seed=mission_config.seed if task_seed is None else task_seed,
             minecraft_seed=mission_config.seed,
-            score=float(raw_report.get("score", 0.0)),
+            score=float(raw_report.get("ranking_score", raw_report.get("score", 0.0))),
             max_score=float(raw_report.get("max_score", 0.0)),
             status=status,
             output_dir=output_dir,
