@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import signal
 import subprocess
 import threading
@@ -12,9 +13,15 @@ from npabench.config import DEFAULT_RECORDER_USERNAME, RECORDER_DIR
 
 
 def _node_bin() -> str:
+    configured = os.environ.get("NPABENCH_NODE_BIN")
+    if configured:
+        return configured
     local_node = RECORDER_DIR / "node_modules" / "node" / "bin" / "node"
     if local_node.exists():
         return str(local_node)
+    resolved = shutil.which("node")
+    if resolved:
+        return resolved
     return "node"
 
 
@@ -35,9 +42,10 @@ def is_available() -> tuple[bool, str | None]:
             f"recorder Node deps missing — run: "
             f"(cd {RECORDER_DIR} && npm install)"
         )
+    node_bin = _node_bin()
     probe = subprocess.run(
         [
-            _node_bin(),
+            node_bin,
             "-e",
             "require('mineflayer')",
         ],
@@ -53,7 +61,8 @@ def is_available() -> tuple[bool, str | None]:
             "recorder Node deps are installed but mineflayer does not load. "
             f"Reinstall the recorder dependencies:\n"
             f"    cd {RECORDER_DIR} && rm -rf node_modules package-lock.json && npm install\n"
-            f"Node probe failed with:\n{tail}"
+            f"Node probe failed returncode={probe.returncode} node={node_bin} cwd={RECORDER_DIR} "
+            f"PATH={os.environ.get('PATH', '')!r} with:\n{tail or '<empty output>'}"
         )
     return True, None
 
