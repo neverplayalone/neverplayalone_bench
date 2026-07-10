@@ -33,6 +33,7 @@ class AgentRunReport:
     agent_kind: str | None
     mission_id: str
     task_id: str
+    task_prompt: str
     seed: int
     minecraft_seed: int
     score: float

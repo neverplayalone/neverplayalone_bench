@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from npabench.agents.base import AgentSpec
 from npabench.evaluation.evaluate import AgentMode
 from npabench.evaluation.run_slot import AgentRunSlot, ServerEndpoint
@@ -50,11 +52,14 @@ def test_run_single_evaluation_writes_artifacts(
     assert report.score == 1.0
     assert report.seed == 7
     assert report.minecraft_seed == 42
+    assert report.task_prompt == "fake mission prompt"
     assert fake_agent.stop_called is True
     assert fake_mission.calls == ["configure_world", "setup_agent", "collect_final_state"]
     assert (tmp_path / "run" / "trace.json").exists()
     assert (tmp_path / "run" / "report.json").exists()
     assert (tmp_path / "run" / "raw_report.json").exists()
+    written = json.loads((tmp_path / "run" / "report.json").read_text())
+    assert written["task_prompt"] == "fake mission prompt"
 
 
 def test_run_single_evaluation_prefers_ranking_score_when_present(

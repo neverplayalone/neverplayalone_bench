@@ -22,6 +22,7 @@ def test_run_batch_evaluation_uses_safe_output_dir_names(
             agent_kind=None,
             mission_id="fake",
             task_id="fake-task",
+            task_prompt="collect one log",
             seed=0,
             minecraft_seed=0,
             score=1.0,
