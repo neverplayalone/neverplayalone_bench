@@ -11,6 +11,12 @@ from pathlib import Path
 
 from npabench.config import DEFAULT_RECORDER_USERNAME, RECORDER_DIR
 
+_NODE_IPC_ENV_KEYS = (
+    "NODE_CHANNEL_FD",
+    "NODE_CHANNEL_SERIALIZATION_MODE",
+    "NODE_UNIQUE_ID",
+)
+
 
 def _node_bin() -> str:
     configured = os.environ.get("NPABENCH_NODE_BIN")
@@ -23,6 +29,18 @@ def _node_bin() -> str:
     if resolved:
         return resolved
     return "node"
+
+
+def _node_env(extra: dict[str, str] | None = None) -> dict[str, str]:
+    env = dict(os.environ)
+    # PM2 injects Node IPC variables into managed processes. If a Python
+    # validator launched by PM2 spawns node, the child node process inherits
+    # those variables and can abort before loading mineflayer.
+    for key in _NODE_IPC_ENV_KEYS:
+        env.pop(key, None)
+    if extra:
+        env.update(extra)
+    return env
 
 
 @dataclass
@@ -50,6 +68,7 @@ def is_available() -> tuple[bool, str | None]:
             "require('mineflayer')",
         ],
         cwd=RECORDER_DIR,
+        env=_node_env(),
         check=False,
         capture_output=True,
         text=True,
@@ -84,15 +103,16 @@ class Recorder:
         self.options.replay_output = (
             self.options.replay_output or packet_output.with_name("recording.mcpr")
         )
-        env = {
-            **os.environ,
-            "NPABENCH_RECORDER_HOST": self.options.host,
-            "NPABENCH_RECORDER_PORT": str(self.options.port),
-            "NPABENCH_RECORDER_USERNAME": self.options.recorder_username,
-            "NPABENCH_RECORDER_TARGET": self.options.target_username,
-            "NPABENCH_RECORDER_PACKET_OUTPUT": str(packet_output),
-            "NPABENCH_RECORDER_PACKET_MANIFEST": str(packet_manifest),
-        }
+        env = _node_env(
+            {
+                "NPABENCH_RECORDER_HOST": self.options.host,
+                "NPABENCH_RECORDER_PORT": str(self.options.port),
+                "NPABENCH_RECORDER_USERNAME": self.options.recorder_username,
+                "NPABENCH_RECORDER_TARGET": self.options.target_username,
+                "NPABENCH_RECORDER_PACKET_OUTPUT": str(packet_output),
+                "NPABENCH_RECORDER_PACKET_MANIFEST": str(packet_manifest),
+            }
+        )
         packet_output.parent.mkdir(parents=True, exist_ok=True)
         self.child_process = subprocess.Popen(
             [_node_bin(), "index.js"],
