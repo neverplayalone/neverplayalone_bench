@@ -126,7 +126,7 @@ class Recorder:
         self._stderr_thread = threading.Thread(target=self._drain_stderr, daemon=True)
         self._stderr_thread.start()
 
-    def stop(self, grace_seconds: float = 3.0) -> None:
+    def stop(self, grace_seconds: float = 12.0) -> None:
         if not self.child_process:
             return
         if self.child_process.poll() is None:

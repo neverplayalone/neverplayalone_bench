@@ -5,6 +5,7 @@
   "description": "Sidecar recorder: joins as spectator and writes ReplayMod-compatible packet logs.",
   "main": "index.js",
   "dependencies": {
-    "mineflayer": "^4.20.0"
+    "mineflayer": "4.37.1",
+    "node": "22.23.1"
   }
 }
