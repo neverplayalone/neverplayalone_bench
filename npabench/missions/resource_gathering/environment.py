@@ -5,6 +5,7 @@ import json
 from mcrcon import MCRcon
 
 from npabench.minecraft.rcon_helpers import read_score
+from npabench.minecraft.rcon_client import command_with_retry
 from npabench.minecraft.spawn import use_world_spawn
 from npabench.missions.base import StartingItem
 from npabench.missions.resource_gathering.config_schema import ResourceGatheringMissionConfig
@@ -14,32 +15,32 @@ def configure_resource_gathering_world(
     rcon: MCRcon,
     mission_config: ResourceGatheringMissionConfig,
 ) -> None:
-    rcon.command("gamerule keep_inventory false")
-    rcon.command("gamerule advance_time true")
-    rcon.command("gamerule advance_weather true")
-    rcon.command("gamerule doMobSpawning false")
-    rcon.command(f"difficulty {mission_config.difficulty}")
-    rcon.command(f"time set {mission_config.spawn_time}")
-    rcon.command("worldborder center 0 0")
-    rcon.command(f"worldborder set {mission_config.world_size}")
+    command_with_retry(rcon, "gamerule keep_inventory false")
+    command_with_retry(rcon, "gamerule advance_time true")
+    command_with_retry(rcon, "gamerule advance_weather true")
+    command_with_retry(rcon, "gamerule doMobSpawning false")
+    command_with_retry(rcon, f"difficulty {mission_config.difficulty}")
+    command_with_retry(rcon, f"time set {mission_config.spawn_time}")
+    command_with_retry(rcon, "worldborder center 0 0")
+    command_with_retry(rcon, f"worldborder set {mission_config.world_size}")
 
 
 def setup_resource_gathering_agent(
     rcon: MCRcon,
     mission_config: ResourceGatheringMissionConfig,
 ) -> tuple[int, tuple[int, int, int]]:
-    rcon.command(f"op {mission_config.username}")
-    rcon.command(f"clear {mission_config.username}")
-    rcon.command("kill @e[type=item]")
-    rcon.command("scoreboard objectives remove mcb_deaths")
-    rcon.command("scoreboard objectives add mcb_deaths minecraft.custom:minecraft.deaths")
+    command_with_retry(rcon, f"op {mission_config.username}")
+    command_with_retry(rcon, f"clear {mission_config.username}")
+    command_with_retry(rcon, "kill @e[type=item]")
+    command_with_retry(rcon, "scoreboard objectives remove mcb_deaths")
+    command_with_retry(rcon, "scoreboard objectives add mcb_deaths minecraft.custom:minecraft.deaths")
     death_baseline = read_score(rcon, mission_config.username, "mcb_deaths")
     spawn_pos = use_world_spawn(rcon, mission_config.username)
     for starting_item in mission_config.starting_items:
         give_starting_item(rcon, mission_config.username, starting_item)
-    rcon.command(f"gamemode survival {mission_config.username}")
-    rcon.command(f"effect give {mission_config.username} minecraft:saturation 3 10 true")
-    rcon.command(f"deop {mission_config.username}")
+    command_with_retry(rcon, f"gamemode survival {mission_config.username}")
+    command_with_retry(rcon, f"effect give {mission_config.username} minecraft:saturation 3 10 true")
+    command_with_retry(rcon, f"deop {mission_config.username}")
     return death_baseline, spawn_pos
 
 

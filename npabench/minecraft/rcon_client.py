@@ -9,6 +9,10 @@ from typing import Iterator
 from mcrcon import MCRcon, MCRconException
 
 
+DEFAULT_SOCKET_TIMEOUT = 20.0
+SAFE_COMMAND_ATTEMPTS = 3
+
+
 class _ThreadSafeMCRcon(MCRcon):
     def __init__(self, host, password, port=25575, tlsmode=0, timeout=5):
         self.host = host
@@ -53,7 +57,7 @@ def rcon_session(
     port: int = 25575,
     password: str = "npabench",
     connect_timeout: float = 60.0,
-    socket_timeout: float = 5.0,
+    socket_timeout: float = DEFAULT_SOCKET_TIMEOUT,
 ) -> Iterator[MCRcon]:
     deadline = time.monotonic() + connect_timeout
     last_err: Exception | None = None
@@ -76,3 +80,41 @@ def rcon_session(
     raise TimeoutError(
         f"RCON not reachable on {host}:{port} after {connect_timeout}s (last: {last_err})"
     ) from last_err
+
+
+def command_with_retry(
+    rcon: MCRcon,
+    command: str,
+    *,
+    attempts: int = SAFE_COMMAND_ATTEMPTS,
+    retry_delay: float = 1.0,
+) -> str:
+    """Run an idempotent RCON command, reconnecting after transient failures.
+
+    Only use this for commands that are safe to execute more than once.  A
+    timeout can happen after Minecraft has already applied a command, so this
+    helper must not be used for non-idempotent commands such as ``give``.
+    """
+    if attempts < 1:
+        raise ValueError("attempts must be at least 1")
+
+    last_error: Exception | None = None
+    for attempt in range(attempts):
+        if attempt:
+            try:
+                rcon.disconnect()
+            except Exception:
+                pass
+            time.sleep(retry_delay)
+            try:
+                rcon.connect()
+            except (MCRconException, OSError) as exc:
+                last_error = exc
+                continue
+        try:
+            return rcon.command(command)
+        except (MCRconException, OSError) as exc:
+            last_error = exc
+
+    assert last_error is not None
+    raise last_error
