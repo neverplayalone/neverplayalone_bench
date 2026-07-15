@@ -38,7 +38,7 @@ class AgentRunReport:
     minecraft_seed: int
     score: float
     max_score: float
-    status: Literal["ok", "agent_never_spawned", "timeout", "error"]
+    status: Literal["ok", "agent_never_spawned", "timeout", "movement_violation", "error"]
     output_dir: Path
     trace_path: Path
     recording_path: Path | None

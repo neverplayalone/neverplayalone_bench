@@ -11,6 +11,7 @@ from rich.console import Console
 
 from npabench.agents import create_agent, ensure_agent_image
 from npabench.agents.base import Agent, AgentRunContext, AgentSpec
+from npabench.evaluation.movement_monitor import MovementMonitor
 from npabench.evaluation.reference_world import (
     cleanup_run_worlds,
     start_agent_run_slot,
@@ -65,6 +66,8 @@ def run_single_evaluation(
     )
     phase = _AgentPhaseState()
     recorder: Recorder | None = None
+    movement_monitor: MovementMonitor | None = None
+    movement_report: dict[str, Any] | None = None
     final_snapshot: dict[str, Any] | None = None
     agent = create_agent(agent_spec, agent_mode=agent_mode, agent_run_slot=agent_run_slot)
     run_error: Exception | None = None
@@ -91,12 +94,14 @@ def run_single_evaluation(
                     mission_config,
                     agent_run_trace,
                 )
+            movement_monitor = _create_movement_monitor(server_endpoint, mission_config)
             _run_agent_protocol(
                 mission=mission,
                 mission_config=mission_config,
                 agent=agent,
                 server_endpoint=server_endpoint,
                 recorder=recorder,
+                movement_monitor=movement_monitor,
                 agent_run_trace=agent_run_trace,
                 phase=phase,
                 task_seed=task_seed,
@@ -104,6 +109,18 @@ def run_single_evaluation(
         finally:
             agent_run_trace.ended_at = time.time()
             agent_run_trace.timed_out = phase.timed_out
+            if movement_monitor is not None:
+                movement_report = movement_monitor.stop()
+                if movement_report.get("violated"):
+                    agent_run_trace.append(
+                        TraceEvent(
+                            kind="error",
+                            data={
+                                "msg": "movement violation",
+                                "movement_monitor": movement_report,
+                            },
+                        )
+                    )
             final_snapshot = _capture_final_state(
                 mission,
                 mission_config,
@@ -134,6 +151,19 @@ def run_single_evaluation(
         final_snapshot,
         output_dir,
     )
+    if movement_report is not None:
+        raw_report["movement_monitor"] = movement_report
+        if movement_report.get("violated"):
+            raw_report.update(
+                {
+                    "score": 0.0,
+                    "ranking_score": 0.0,
+                    "status": "movement_violation",
+                    "error": "impossible movement detected",
+                }
+            )
+        (output_dir / "movement_monitor.json").write_text(json.dumps(movement_report, indent=2))
+        (output_dir / "raw_report.json").write_text(json.dumps(raw_report, indent=2))
     if run_error is not None:
         raw_report.update(
             {
@@ -242,6 +272,18 @@ def _start_recorder(
         )
 
 
+def _create_movement_monitor(
+    server_endpoint: ServerEndpoint,
+    mission_config: MissionConfig,
+) -> MovementMonitor:
+    return MovementMonitor(
+        host=server_endpoint.host,
+        rcon_port=server_endpoint.rcon_port,
+        rcon_password=server_endpoint.rcon_password,
+        username=mission_config.username,
+    )
+
+
 def _run_agent_protocol(
     *,
     mission: Mission,
@@ -249,6 +291,7 @@ def _run_agent_protocol(
     agent: Agent,
     server_endpoint: ServerEndpoint,
     recorder: Recorder | None,
+    movement_monitor: MovementMonitor | None,
     agent_run_trace: AgentRunTrace,
     phase: _AgentPhaseState,
     task_seed: int | None,
@@ -267,6 +310,8 @@ def _run_agent_protocol(
                 agent_run_trace,
                 phase,
             )
+            if movement_monitor is not None:
+                movement_monitor.start()
         if event.kind == "done":
             break
 
@@ -380,6 +425,8 @@ def _report_status(
 ) -> str:
     if raw_report.get("status") == "error":
         return "error"
+    if raw_report.get("status") == "movement_violation":
+        return "movement_violation"
     if raw_report.get("status") == "agent_never_spawned":
         return "agent_never_spawned"
     if phase.timed_out:
