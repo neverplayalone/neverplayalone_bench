@@ -67,6 +67,7 @@ def run_single_evaluation(
     recorder: Recorder | None = None
     final_snapshot: dict[str, Any] | None = None
     agent = create_agent(agent_spec, agent_mode=agent_mode, agent_run_slot=agent_run_slot)
+    run_error: Exception | None = None
 
     try:
         console.log(f"Running {agent_spec.name} on {mission.id}:{mission_config.id}")
@@ -113,37 +114,57 @@ def run_single_evaluation(
             agent.stop()
             _stop_recorder_and_export(recorder, agent_run_trace)
 
-        raw_report = _score_and_write_artifacts(
-            mission,
-            mission_config,
-            agent_run_trace,
-            final_snapshot,
-            output_dir,
+    except Exception as exc:
+        # A single server, RCON, recorder, or agent failure must not abort the
+        # enclosing batch.  Persist a normal zero-score report so validators can
+        # upload the result and continue evaluating the remaining entries.
+        run_error = exc
+        phase.status = "error"
+        agent_run_trace.append(
+            TraceEvent(kind="error", data={"msg": f"evaluation failed: {exc}"})
         )
-        status = _report_status(raw_report, phase)
-        report = AgentRunReport(
-            agent_name=agent_spec.name,
-            agent_kind=agent_spec.kind,
-            mission_id=mission.id,
-            task_id=mission_config.id,
-            task_prompt=mission.prompt_text(mission_config),
-            seed=mission_config.seed if task_seed is None else task_seed,
-            minecraft_seed=mission_config.seed,
-            score=float(raw_report.get("ranking_score", raw_report.get("score", 0.0))),
-            max_score=float(raw_report.get("max_score", 0.0)),
-            status=status,
-            output_dir=output_dir,
-            trace_path=output_dir / "trace.json",
-            recording_path=(output_dir / "recording.mcpr")
-            if (output_dir / "recording.mcpr").exists()
-            else None,
-            raw=raw_report,
-        )
-        _write_agent_run_report(report, output_dir / "report.json")
-        return report
     finally:
         stop_agent_run_slot(agent_run_slot, quiet=True)
         cleanup_run_worlds(agent_run_slot.data_root)
+
+    raw_report = _score_and_write_artifacts(
+        mission,
+        mission_config,
+        agent_run_trace,
+        final_snapshot,
+        output_dir,
+    )
+    if run_error is not None:
+        raw_report.update(
+            {
+                "score": 0.0,
+                "ranking_score": 0.0,
+                "status": "error",
+                "error": str(run_error),
+            }
+        )
+        (output_dir / "raw_report.json").write_text(json.dumps(raw_report, indent=2))
+    status = _report_status(raw_report, phase)
+    report = AgentRunReport(
+        agent_name=agent_spec.name,
+        agent_kind=agent_spec.kind,
+        mission_id=mission.id,
+        task_id=mission_config.id,
+        task_prompt=mission.prompt_text(mission_config),
+        seed=mission_config.seed if task_seed is None else task_seed,
+        minecraft_seed=mission_config.seed,
+        score=float(raw_report.get("ranking_score", raw_report.get("score", 0.0))),
+        max_score=float(raw_report.get("max_score", 0.0)),
+        status=status,
+        output_dir=output_dir,
+        trace_path=output_dir / "trace.json",
+        recording_path=(output_dir / "recording.mcpr")
+        if (output_dir / "recording.mcpr").exists()
+        else None,
+        raw=raw_report,
+    )
+    _write_agent_run_report(report, output_dir / "report.json")
+    return report
 
 
 def _prepare_output_dir(output_dir: Path) -> Path:
