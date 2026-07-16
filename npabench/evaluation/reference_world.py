@@ -99,7 +99,7 @@ def start_agent_run_slot(
         "GENERATE_STRUCTURES": str(mission_config.generate_structures).upper(),
         "SPAWN_PROTECTION": "0",
         "VIEW_DISTANCE": "10",
-        "ALLOW_FLIGHT": "TRUE",
+        "ALLOW_FLIGHT": "FALSE",
         "SEED": str(mission_config.seed),
     }
 
