@@ -1,0 +1,78 @@
+id: mining
+minecraft_version: "1.21.11"
+world_type: normal
+generate_structures: true        # caves / ravines / lava are the terrain hazards
+difficulty: peaceful             # no mob RNG; lava & falls are the (deterministic) danger
+memory: 2G
+duration_seconds: 720            # longer than the surface mission: descend + mine + climb back
+world_size: 10000
+spawn_time: 0
+username: npabench_agent
+
+starting_items:
+  - item: netherite_pickaxe       # mines every ore tier — tooling isn't the bottleneck
+    count: 1
+  - item: netherite_shovel        # dig down through dirt / gravel fast
+    count: 1
+  - item: cooked_beef
+    count: 64
+  - item: torch                   # lighting the descent
+    count: 64
+    slot: weapon.offhand
+
+scoring:
+  # Distance is measured in 3D for mining (see scoring.distance_from_spawn_3d),
+  # so the vertical climb back out of the mine counts toward the return
+  # multiplier — an agent must resurface near spawn to keep full credit.
+  distance_bands:
+    - [10, 1.00]
+    - [30, 0.90]
+    - [100, 0.75]
+    - [250, 0.60]
+    - [500, 0.50]
+    - [1000, 0.40]
+    - [2000, 0.30]
+  distance_floor_mult: 0.20
+
+# Optional deterministic ore placement. Off by default: the mission runs on the
+# seeded world's natural ores (same proven world-setup path as resource_gathering).
+# Turn on to guarantee an equally-solvable, reachable deposit near spawn every
+# round — validate with a live Docker run before enabling in production.
+deposit:
+  enabled: false
+  offset_range: 24
+  over_provision: 1.6
+
+menu:
+  resources:
+    # ---- essentials: coal + iron + gold (always required) ----
+    coal:
+      display_name: coal
+      items: [coal]
+      target_range: [16, 32]          # common, shallow-mid
+    iron:
+      display_name: iron
+      items: [raw_iron, iron_ingot]   # ingot accepted so smelting isn't penalized
+      target_range: [10, 20]
+    gold:
+      display_name: gold
+      items: [raw_gold, gold_ingot]
+      target_range: [2, 4]            # small — rare/deep, but guaranteed every round
+
+    # ---- optional pool (two rolled per task) ----
+    redstone:
+      display_name: redstone
+      items: [redstone]
+      target_range: [10, 20]          # drops 4-5 per ore block
+    diamond:
+      display_name: diamond
+      items: [diamond]
+      target_range: [2, 4]            # deep & rare
+    lapis:
+      display_name: lapis lazuli
+      items: [lapis_lazuli]
+      target_range: [8, 16]           # drops 4-9 per ore block
+    copper:
+      display_name: copper
+      items: [raw_copper, copper_ingot]
+      target_range: [12, 24]          # common, mid depth
