@@ -4,7 +4,7 @@ world_type: normal
 generate_structures: true        # caves / ravines / lava are the terrain hazards
 difficulty: peaceful             # no mob RNG; lava & falls are the (deterministic) danger
 memory: 2G
-duration_seconds: 720            # longer than the surface mission: descend + mine + climb back
+duration_seconds: 600            # longer than the surface mission: descend + mine + climb back
 world_size: 10000
 spawn_time: 0
 username: npabench_agent
