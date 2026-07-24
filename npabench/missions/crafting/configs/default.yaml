@@ -11,7 +11,7 @@
 # band B = requires a wooden pickaxe (cobblestone)
 # band C = requires a placed furnace (smelting; 10s per operation)
 
-id: crafting
+id: crafting_v1
 minecraft_version: "1.21.11"
 world_type: normal
 generate_structures: false

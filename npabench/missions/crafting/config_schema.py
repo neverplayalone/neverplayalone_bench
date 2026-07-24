@@ -114,7 +114,7 @@ class RecipeMenu(BaseModel):
 
 
 class CraftingMissionConfig(MissionConfig):
-    id: str = "crafting"
+    id: str = "crafting_v1"
     prompt: str = "Craft the requested items and return to spawn holding all of them."
     # Empty by default and by design: bootstrapping the tech tree from bare hands
     # is the mission.

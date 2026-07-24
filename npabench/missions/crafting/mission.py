@@ -22,7 +22,7 @@ _CONFIG_DIR = Path(__file__).resolve().parent / "configs"
 
 
 class CraftingMission(Mission):
-    id = "crafting"
+    id = "crafting_v1"
 
     def default_config_path(self) -> Path:
         return _CONFIG_DIR / "default.yaml"

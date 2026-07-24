@@ -96,7 +96,7 @@ def build_task_id(seed: int, targets: list[CraftingTaskTarget]) -> str:
     # name the task by. Band C is the most characteristic part of a round.
     smelt_keys = [target.key for target in targets if target.band == "C"]
     suffix = "_".join(smelt_keys) if smelt_keys else "no_smelting"
-    return f"crafting_{seed}_{suffix}"
+    return f"crafting_v1_{seed}_{suffix}"
 
 
 def _assert_menu_is_samplable(menu: RecipeMenu) -> None:

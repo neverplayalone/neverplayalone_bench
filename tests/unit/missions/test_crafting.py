@@ -30,12 +30,12 @@ def _mission_and_config() -> tuple[CraftingMission, CraftingMissionConfig]:
 # --- config + catalog ---------------------------------------------------------
 
 def test_crafting_is_registered() -> None:
-    assert isinstance(get_mission("crafting"), CraftingMission)
+    assert isinstance(get_mission("crafting_v1"), CraftingMission)
 
 
 def test_bundled_config_loads() -> None:
     _, config = _mission_and_config()
-    assert config.id == "crafting"
+    assert config.id == "crafting_v1"
     assert config.minecraft_version == "1.21.11"
     assert config.menu is not None
     # Empty inventory and no structures are both load-bearing: bootstrapping from
@@ -163,7 +163,7 @@ def test_task_ids_name_the_smelting_targets() -> None:
     _, config = _mission_and_config()
     task = generate_task(config, seed=42)
     smelt_keys = [t.key for t in task.targets if t.band == "C"]
-    assert task.task_id.startswith("crafting_42_")
+    assert task.task_id.startswith("crafting_v1_42_")
     for key in smelt_keys:
         assert key in task.task_id
 
