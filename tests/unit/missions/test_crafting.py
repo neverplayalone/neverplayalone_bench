@@ -59,7 +59,13 @@ def test_catalog_entries_are_well_formed() -> None:
     assert config.menu is not None
     for key, entry in config.menu.recipes.items():
         assert entry.display_name, f"{key} has no display_name for the prompt"
-        assert entry.items == [key]
+        assert entry.items, f"{key} counts no items"
+        if key.startswith("any_"):
+            # Wood-variant group: the key is a label, not an item id.
+            assert len(entry.items) >= 2, f"{key} is a group with one variant"
+            assert key not in entry.items
+        else:
+            assert entry.items == [key]
         lo, hi = entry.target_range
         assert 1 <= lo <= hi
         # Band must agree with the derived cost, since band is what gates the
@@ -70,6 +76,30 @@ def test_catalog_entries_are_well_formed() -> None:
             assert entry.cost.smelt_ops == 0 and entry.cost.cobble > 0
         else:
             assert entry.cost.smelt_ops == 0 and entry.cost.cobble == 0
+
+
+def test_no_target_is_locked_to_one_wood_type() -> None:
+    """Wood-variant items must accept any wood type.
+
+    The biome pool includes taiga and birch forest, where no oak grows. An
+    oak-specific target there is unobtainable no matter how good the agent is --
+    a seed lottery, and exactly what this mission is built to avoid. Every wood
+    type crafts an identical item, so they are grouped (the same shape as
+    resource_gathering's `logs`). Observed for real: `oak_wood 0/2` on a taiga
+    seed, scored zero through no fault of the agent.
+    """
+    _, config = _mission_and_config()
+    assert config.menu is not None
+    for key, entry in config.menu.recipes.items():
+        for wood in ("oak_", "spruce_", "birch_", "acacia_", "jungle_"):
+            assert not key.startswith(wood), f"{key} is locked to a single wood type"
+        if len(entry.items) == 1:
+            assert not entry.items[0].startswith("oak_"), f"{key} only counts oak"
+
+    # And the groups really do span the overworld woods an agent might spawn in.
+    slab = config.menu.recipes["any_slab"]
+    assert {"oak_slab", "spruce_slab", "birch_slab"} <= set(slab.items)
+    assert slab.display_name == "Wooden Slab"  # prompt must not say "Oak Slab"
 
 
 def test_pure_intermediates_are_not_sampleable() -> None:

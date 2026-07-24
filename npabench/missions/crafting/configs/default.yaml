@@ -48,9 +48,9 @@ scoring:
 menu:
   recipes:
     # ---- band A ----
-    oak_slab:
-      display_name: Oak Slab
-      items: [oak_slab]
+    any_slab:
+      display_name: Wooden Slab
+      items: [oak_slab, spruce_slab, birch_slab, jungle_slab, acacia_slab, dark_oak_slab, mangrove_slab, cherry_slab, pale_oak_slab, bamboo_slab, crimson_slab, warped_slab]
       band: A
       cost: {logs: 0.13, cobble: 0, smelt_ops: 0}
       target_range: [26, 64]
@@ -60,9 +60,9 @@ menu:
       band: A
       cost: {logs: 0.19, cobble: 0, smelt_ops: 0}
       target_range: [17, 43]
-    oak_button:
-      display_name: Oak Button
-      items: [oak_button]
+    any_button:
+      display_name: Wooden Button
+      items: [oak_button, spruce_button, birch_button, jungle_button, acacia_button, dark_oak_button, mangrove_button, cherry_button, pale_oak_button, bamboo_button, crimson_button, warped_button]
       band: A
       cost: {logs: 0.25, cobble: 0, smelt_ops: 0}
       target_range: [13, 32]
@@ -72,27 +72,27 @@ menu:
       band: A
       cost: {logs: 0.29, cobble: 0, smelt_ops: 0}
       target_range: [11, 27]
-    oak_stairs:
-      display_name: Oak Stairs
-      items: [oak_stairs]
+    any_stairs:
+      display_name: Wooden Stairs
+      items: [oak_stairs, spruce_stairs, birch_stairs, jungle_stairs, acacia_stairs, dark_oak_stairs, mangrove_stairs, cherry_stairs, pale_oak_stairs, bamboo_stairs, crimson_stairs, warped_stairs]
       band: A
       cost: {logs: 0.38, cobble: 0, smelt_ops: 0}
       target_range: [9, 21]
-    oak_fence:
-      display_name: Oak Fence
-      items: [oak_fence]
+    any_fence:
+      display_name: Wooden Fence
+      items: [oak_fence, spruce_fence, birch_fence, jungle_fence, acacia_fence, dark_oak_fence, mangrove_fence, cherry_fence, pale_oak_fence, bamboo_fence, crimson_fence, warped_fence]
       band: A
       cost: {logs: 0.42, cobble: 0, smelt_ops: 0}
       target_range: [8, 19]
-    oak_pressure_plate:
-      display_name: Oak Pressure Plate
-      items: [oak_pressure_plate]
+    any_pressure_plate:
+      display_name: Wooden Pressure Plate
+      items: [oak_pressure_plate, spruce_pressure_plate, birch_pressure_plate, jungle_pressure_plate, acacia_pressure_plate, dark_oak_pressure_plate, mangrove_pressure_plate, cherry_pressure_plate, pale_oak_pressure_plate, bamboo_pressure_plate, crimson_pressure_plate, warped_pressure_plate]
       band: A
       cost: {logs: 0.5, cobble: 0, smelt_ops: 0}
       target_range: [6, 16]
-    oak_door:
-      display_name: Oak Door
-      items: [oak_door]
+    any_door:
+      display_name: Wooden Door
+      items: [oak_door, spruce_door, birch_door, jungle_door, acacia_door, dark_oak_door, mangrove_door, cherry_door, pale_oak_door, bamboo_door, crimson_door, warped_door]
       band: A
       cost: {logs: 0.5, cobble: 0, smelt_ops: 0}
       target_range: [6, 16]
@@ -108,9 +108,9 @@ menu:
       band: A
       cost: {logs: 0.5, cobble: 0, smelt_ops: 0}
       target_range: [6, 16]
-    oak_sign:
-      display_name: Oak Sign
-      items: [oak_sign]
+    any_sign:
+      display_name: Wooden Sign
+      items: [oak_sign, spruce_sign, birch_sign, jungle_sign, acacia_sign, dark_oak_sign, mangrove_sign, cherry_sign, pale_oak_sign, bamboo_sign, crimson_sign, warped_sign]
       band: A
       cost: {logs: 0.54, cobble: 0, smelt_ops: 0}
       target_range: [6, 15]
@@ -120,9 +120,9 @@ menu:
       band: A
       cost: {logs: 0.63, cobble: 0, smelt_ops: 0}
       target_range: [5, 13]
-    oak_trapdoor:
-      display_name: Oak Trapdoor
-      items: [oak_trapdoor]
+    any_trapdoor:
+      display_name: Wooden Trapdoor
+      items: [oak_trapdoor, spruce_trapdoor, birch_trapdoor, jungle_trapdoor, acacia_trapdoor, dark_oak_trapdoor, mangrove_trapdoor, cherry_trapdoor, pale_oak_trapdoor, bamboo_trapdoor, crimson_trapdoor, warped_trapdoor]
       band: A
       cost: {logs: 0.75, cobble: 0, smelt_ops: 0}
       target_range: [4, 11]
@@ -144,9 +144,9 @@ menu:
       band: A
       cost: {logs: 1, cobble: 0, smelt_ops: 0}
       target_range: [3, 8]
-    oak_fence_gate:
-      display_name: Oak Fence Gate
-      items: [oak_fence_gate]
+    any_fence_gate:
+      display_name: Wooden Fence Gate
+      items: [oak_fence_gate, spruce_fence_gate, birch_fence_gate, jungle_fence_gate, acacia_fence_gate, dark_oak_fence_gate, mangrove_fence_gate, cherry_fence_gate, pale_oak_fence_gate, bamboo_fence_gate, crimson_fence_gate, warped_fence_gate]
       band: A
       cost: {logs: 1, cobble: 0, smelt_ops: 0}
       target_range: [3, 8]
@@ -162,15 +162,15 @@ menu:
       band: A
       cost: {logs: 1, cobble: 0, smelt_ops: 0}
       target_range: [3, 8]
-    oak_boat:
-      display_name: Oak Boat
-      items: [oak_boat]
+    any_boat:
+      display_name: Boat
+      items: [oak_boat, spruce_boat, birch_boat, jungle_boat, acacia_boat, dark_oak_boat, mangrove_boat, cherry_boat, pale_oak_boat]
       band: A
       cost: {logs: 1.25, cobble: 0, smelt_ops: 0}
       target_range: [3, 6]
-    oak_wood:
-      display_name: Oak Wood
-      items: [oak_wood]
+    any_wood:
+      display_name: Wood Block
+      items: [oak_wood, spruce_wood, birch_wood, jungle_wood, acacia_wood, dark_oak_wood, mangrove_wood, cherry_wood, pale_oak_wood]
       band: A
       cost: {logs: 1.33, cobble: 0, smelt_ops: 0}
       target_range: [2, 6]
@@ -192,9 +192,9 @@ menu:
       band: A
       cost: {logs: 2, cobble: 0, smelt_ops: 0}
       target_range: [2, 4]
-    oak_chest_boat:
-      display_name: Oak Boat with Chest
-      items: [oak_chest_boat]
+    any_chest_boat:
+      display_name: Boat with Chest
+      items: [oak_chest_boat, spruce_chest_boat, birch_chest_boat, jungle_chest_boat, acacia_chest_boat, dark_oak_chest_boat, mangrove_chest_boat, cherry_chest_boat, pale_oak_chest_boat]
       band: A
       cost: {logs: 3.25, cobble: 0, smelt_ops: 0}
       target_range: [1, 2]
