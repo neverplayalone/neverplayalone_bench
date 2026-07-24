@@ -59,16 +59,19 @@ def _mission_config_summary(config: MissionConfig) -> dict[str, Any]:
     data = config.model_dump()
     prompt = str(data.pop("prompt", ""))
     starting_items = data.pop("starting_items", [])
-    resources = data.pop("resources", [])
+    # Missions name their resolved target list differently (crafting calls them
+    # recipes), so summarise every known spelling. Anything left inline gets
+    # dumped in full into the round log.
+    targets = data.pop("resources", []) + data.pop("recipes", [])
     scoring = data.pop("scoring", None)
     menu = data.pop("menu", None)
     data["prompt_chars"] = len(prompt)
     data["starting_items_count"] = len(starting_items)
-    data["resources_count"] = len(resources)
+    data["resources_count"] = len(targets)
     if isinstance(scoring, dict):
         data["scoring_distance_bands"] = len(scoring.get("distance_bands", []))
     if isinstance(menu, dict):
-        data["menu_resources_count"] = len((menu.get("resources") or {}))
+        data["menu_resources_count"] = len(menu.get("resources") or menu.get("recipes") or {})
     return data
 
 

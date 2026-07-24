@@ -1,0 +1,370 @@
+# GENERATED FILE -- do not edit by hand.
+#
+# Regenerate with:
+#   cd tools/catalog && npm install
+#   node gen_crafting_catalog.js > ../../npabench/missions/crafting/configs/default.yaml
+#
+# Source: minecraft-data @ 1.21.11
+# Catalog: 53 sampleable items (band A 25, band B 12, band C 16)
+#
+# band A = crafting table only
+# band B = requires a wooden pickaxe (cobblestone)
+# band C = requires a placed furnace (smelting; 10s per operation)
+
+id: crafting
+minecraft_version: "1.21.11"
+world_type: normal
+generate_structures: false
+difficulty: peaceful
+memory: 2G
+duration_seconds: 600
+world_size: 10000
+spawn_time: 0
+username: npabench_agent
+
+# Empty inventory: bootstrapping the tech tree from nothing is the mission.
+starting_items: []
+
+# Rolled per seed; a treeless spawn would be an unrecoverable zero.
+biomes:
+  - minecraft:forest
+  - minecraft:birch_forest
+  - minecraft:taiga
+  - minecraft:old_growth_pine_taiga
+
+scoring:
+  # Reused from mining: 3D distance, so the agent must climb back out and
+  # deliver the goods at spawn rather than abandon them down a hole.
+  distance_bands:
+    - [10, 1.00]
+    - [30, 0.90]
+    - [100, 0.75]
+    - [250, 0.60]
+    - [500, 0.50]
+    - [1000, 0.40]
+    - [2000, 0.30]
+  distance_floor_mult: 0.20
+
+menu:
+  recipes:
+    # ---- band A ----
+    oak_slab:
+      display_name: Oak Slab
+      items: [oak_slab]
+      band: A
+      cost: {logs: 0.13, cobble: 0, smelt_ops: 0}
+      target_range: [26, 64]
+    bowl:
+      display_name: Bowl
+      items: [bowl]
+      band: A
+      cost: {logs: 0.19, cobble: 0, smelt_ops: 0}
+      target_range: [17, 43]
+    oak_button:
+      display_name: Oak Button
+      items: [oak_button]
+      band: A
+      cost: {logs: 0.25, cobble: 0, smelt_ops: 0}
+      target_range: [13, 32]
+    ladder:
+      display_name: Ladder
+      items: [ladder]
+      band: A
+      cost: {logs: 0.29, cobble: 0, smelt_ops: 0}
+      target_range: [11, 27]
+    oak_stairs:
+      display_name: Oak Stairs
+      items: [oak_stairs]
+      band: A
+      cost: {logs: 0.38, cobble: 0, smelt_ops: 0}
+      target_range: [9, 21]
+    oak_fence:
+      display_name: Oak Fence
+      items: [oak_fence]
+      band: A
+      cost: {logs: 0.42, cobble: 0, smelt_ops: 0}
+      target_range: [8, 19]
+    oak_pressure_plate:
+      display_name: Oak Pressure Plate
+      items: [oak_pressure_plate]
+      band: A
+      cost: {logs: 0.5, cobble: 0, smelt_ops: 0}
+      target_range: [6, 16]
+    oak_door:
+      display_name: Oak Door
+      items: [oak_door]
+      band: A
+      cost: {logs: 0.5, cobble: 0, smelt_ops: 0}
+      target_range: [6, 16]
+    wooden_shovel:
+      display_name: Wooden Shovel
+      items: [wooden_shovel]
+      band: A
+      cost: {logs: 0.5, cobble: 0, smelt_ops: 0}
+      target_range: [6, 16]
+    wooden_spear:
+      display_name: Wooden Spear
+      items: [wooden_spear]
+      band: A
+      cost: {logs: 0.5, cobble: 0, smelt_ops: 0}
+      target_range: [6, 16]
+    oak_sign:
+      display_name: Oak Sign
+      items: [oak_sign]
+      band: A
+      cost: {logs: 0.54, cobble: 0, smelt_ops: 0}
+      target_range: [6, 15]
+    wooden_sword:
+      display_name: Wooden Sword
+      items: [wooden_sword]
+      band: A
+      cost: {logs: 0.63, cobble: 0, smelt_ops: 0}
+      target_range: [5, 13]
+    oak_trapdoor:
+      display_name: Oak Trapdoor
+      items: [oak_trapdoor]
+      band: A
+      cost: {logs: 0.75, cobble: 0, smelt_ops: 0}
+      target_range: [4, 11]
+    wooden_hoe:
+      display_name: Wooden Hoe
+      items: [wooden_hoe]
+      band: A
+      cost: {logs: 0.75, cobble: 0, smelt_ops: 0}
+      target_range: [4, 11]
+    composter:
+      display_name: Composter
+      items: [composter]
+      band: A
+      cost: {logs: 0.88, cobble: 0, smelt_ops: 0}
+      target_range: [4, 9]
+    crafting_table:
+      display_name: Crafting Table
+      items: [crafting_table]
+      band: A
+      cost: {logs: 1, cobble: 0, smelt_ops: 0}
+      target_range: [3, 8]
+    oak_fence_gate:
+      display_name: Oak Fence Gate
+      items: [oak_fence_gate]
+      band: A
+      cost: {logs: 1, cobble: 0, smelt_ops: 0}
+      target_range: [3, 8]
+    wooden_pickaxe:
+      display_name: Wooden Pickaxe
+      items: [wooden_pickaxe]
+      band: A
+      cost: {logs: 1, cobble: 0, smelt_ops: 0}
+      target_range: [3, 8]
+    wooden_axe:
+      display_name: Wooden Axe
+      items: [wooden_axe]
+      band: A
+      cost: {logs: 1, cobble: 0, smelt_ops: 0}
+      target_range: [3, 8]
+    oak_boat:
+      display_name: Oak Boat
+      items: [oak_boat]
+      band: A
+      cost: {logs: 1.25, cobble: 0, smelt_ops: 0}
+      target_range: [3, 6]
+    oak_wood:
+      display_name: Oak Wood
+      items: [oak_wood]
+      band: A
+      cost: {logs: 1.33, cobble: 0, smelt_ops: 0}
+      target_range: [2, 6]
+    barrel:
+      display_name: Barrel
+      items: [barrel]
+      band: A
+      cost: {logs: 1.75, cobble: 0, smelt_ops: 0}
+      target_range: [2, 5]
+    chiseled_bookshelf:
+      display_name: Chiseled Bookshelf
+      items: [chiseled_bookshelf]
+      band: A
+      cost: {logs: 1.88, cobble: 0, smelt_ops: 0}
+      target_range: [2, 4]
+    chest:
+      display_name: Chest
+      items: [chest]
+      band: A
+      cost: {logs: 2, cobble: 0, smelt_ops: 0}
+      target_range: [2, 4]
+    oak_chest_boat:
+      display_name: Oak Boat with Chest
+      items: [oak_chest_boat]
+      band: A
+      cost: {logs: 3.25, cobble: 0, smelt_ops: 0}
+      target_range: [1, 2]
+    # ---- band B ----
+    cobblestone_slab:
+      display_name: Cobblestone Slab
+      items: [cobblestone_slab]
+      band: B
+      cost: {logs: 0, cobble: 0.5, smelt_ops: 0}
+      target_range: [16, 40]
+    cobblestone_wall:
+      display_name: Cobblestone Wall
+      items: [cobblestone_wall]
+      band: B
+      cost: {logs: 0, cobble: 1, smelt_ops: 0}
+      target_range: [8, 20]
+    lever:
+      display_name: Lever
+      items: [lever]
+      band: B
+      cost: {logs: 0.13, cobble: 1, smelt_ops: 0}
+      target_range: [6, 15]
+    cobblestone_stairs:
+      display_name: Cobblestone Stairs
+      items: [cobblestone_stairs]
+      band: B
+      cost: {logs: 0, cobble: 1.5, smelt_ops: 0}
+      target_range: [5, 13]
+    stone_shovel:
+      display_name: Stone Shovel
+      items: [stone_shovel]
+      band: B
+      cost: {logs: 0.25, cobble: 1, smelt_ops: 0}
+      target_range: [5, 12]
+    stone_spear:
+      display_name: Stone Spear
+      items: [stone_spear]
+      band: B
+      cost: {logs: 0.25, cobble: 1, smelt_ops: 0}
+      target_range: [5, 12]
+    stone_sword:
+      display_name: Stone Sword
+      items: [stone_sword]
+      band: B
+      cost: {logs: 0.13, cobble: 2, smelt_ops: 0}
+      target_range: [3, 9]
+    stone_hoe:
+      display_name: Stone Hoe
+      items: [stone_hoe]
+      band: B
+      cost: {logs: 0.25, cobble: 2, smelt_ops: 0}
+      target_range: [3, 8]
+    stone_pickaxe:
+      display_name: Stone Pickaxe
+      items: [stone_pickaxe]
+      band: B
+      cost: {logs: 0.25, cobble: 3, smelt_ops: 0}
+      target_range: [2, 6]
+    stone_axe:
+      display_name: Stone Axe
+      items: [stone_axe]
+      band: B
+      cost: {logs: 0.25, cobble: 3, smelt_ops: 0}
+      target_range: [2, 6]
+    furnace:
+      display_name: Furnace
+      items: [furnace]
+      band: B
+      cost: {logs: 0, cobble: 8, smelt_ops: 0}
+      target_range: [1, 3]
+    smoker:
+      display_name: Smoker
+      items: [smoker]
+      band: B
+      cost: {logs: 4, cobble: 8, smelt_ops: 0}
+      target_range: [1, 1]
+    # ---- band C ----
+    torch:
+      display_name: Torch
+      items: [torch]
+      band: C
+      cost: {logs: 0.28, cobble: 0, smelt_ops: 0.25}
+      target_range: [2, 6]
+    stone_slab:
+      display_name: Stone Slab
+      items: [stone_slab]
+      band: C
+      cost: {logs: 0, cobble: 0.5, smelt_ops: 0.5}
+      target_range: [1, 4]
+    stone_brick_slab:
+      display_name: Stone Brick Slab
+      items: [stone_brick_slab]
+      band: C
+      cost: {logs: 0, cobble: 0.5, smelt_ops: 0.5}
+      target_range: [1, 4]
+    grindstone:
+      display_name: Grindstone
+      items: [grindstone]
+      band: C
+      cost: {logs: 0.75, cobble: 0.5, smelt_ops: 0.5}
+      target_range: [1, 3]
+    smooth_stone_slab:
+      display_name: Smooth Stone Slab
+      items: [smooth_stone_slab]
+      band: C
+      cost: {logs: 0, cobble: 0.5, smelt_ops: 1}
+      target_range: [1, 2]
+    stone:
+      display_name: Stone
+      items: [stone]
+      band: C
+      cost: {logs: 0, cobble: 1, smelt_ops: 1}
+      target_range: [1, 2]
+    stone_bricks:
+      display_name: Stone Bricks
+      items: [stone_bricks]
+      band: C
+      cost: {logs: 0, cobble: 1, smelt_ops: 1}
+      target_range: [1, 2]
+    stone_button:
+      display_name: Stone Button
+      items: [stone_button]
+      band: C
+      cost: {logs: 0, cobble: 1, smelt_ops: 1}
+      target_range: [1, 2]
+    stone_brick_wall:
+      display_name: Stone Brick Wall
+      items: [stone_brick_wall]
+      band: C
+      cost: {logs: 0, cobble: 1, smelt_ops: 1}
+      target_range: [1, 2]
+    chiseled_stone_bricks:
+      display_name: Chiseled Stone Bricks
+      items: [chiseled_stone_bricks]
+      band: C
+      cost: {logs: 0, cobble: 1, smelt_ops: 1}
+      target_range: [1, 2]
+    armor_stand:
+      display_name: Armor Stand
+      items: [armor_stand]
+      band: C
+      cost: {logs: 0.75, cobble: 0.5, smelt_ops: 1}
+      target_range: [1, 2]
+    charcoal:
+      display_name: Charcoal
+      items: [charcoal]
+      band: C
+      cost: {logs: 1, cobble: 0, smelt_ops: 1}
+      target_range: [1, 2]
+    stone_stairs:
+      display_name: Stone Stairs
+      items: [stone_stairs]
+      band: C
+      cost: {logs: 0, cobble: 1.5, smelt_ops: 1.5}
+      target_range: [1, 1]
+    stone_brick_stairs:
+      display_name: Stone Brick Stairs
+      items: [stone_brick_stairs]
+      band: C
+      cost: {logs: 0, cobble: 1.5, smelt_ops: 1.5}
+      target_range: [1, 1]
+    smooth_stone:
+      display_name: Smooth Stone
+      items: [smooth_stone]
+      band: C
+      cost: {logs: 0, cobble: 1, smelt_ops: 2}
+      target_range: [1, 1]
+    stone_pressure_plate:
+      display_name: Stone Pressure Plate
+      items: [stone_pressure_plate]
+      band: C
+      cost: {logs: 0, cobble: 2, smelt_ops: 2}
+      target_range: [1, 1]
