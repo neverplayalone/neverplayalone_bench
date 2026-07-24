@@ -107,7 +107,12 @@ def _resolve_prompt(task: CraftingTask) -> tuple[str, PromptMetadata]:
     for attempt in range(PROMPT_ATTEMPTS):
         try:
             prompt, metadata = _generate_prompt(task, attempt=attempt)
-        except RuntimeError as exc:
+        except Exception as exc:  # noqa: BLE001 - a prompt must never fail a run
+            # Deliberately broad. The whole point of the template fallback is
+            # that no provider failure can abort an evaluation, and provider
+            # failures are not all RuntimeError: a socket read timeout surfaces
+            # as a bare TimeoutError straight out of ssl, which previously
+            # escaped and killed the run.
             log.warning("crafting prompt generation failed (attempt %s): %s", attempt + 1, exc)
             break
         missing = unfaithful_targets(prompt, task.targets)
@@ -215,6 +220,10 @@ def _generate_prompt(task: CraftingTask, *, attempt: int = 0) -> tuple[str, Prom
         raise RuntimeError(f"prompt generation failed ({exc.code}): {detail}") from exc
     except urllib.error.URLError as exc:
         raise RuntimeError(f"prompt generation request failed: {exc}") from exc
+    except OSError as exc:
+        # Read timeouts raise a bare TimeoutError (an OSError) from the socket
+        # layer rather than a URLError, so they need their own arm.
+        raise RuntimeError(f"prompt generation timed out: {exc}") from exc
 
     prompt = _extract_prompt_text(payload).strip()
     if not prompt:

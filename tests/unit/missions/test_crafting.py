@@ -312,6 +312,25 @@ def test_generation_failure_falls_back_instead_of_killing_the_run(tmp_path, monk
     assert materialized.prompt_metadata.provider == "template"
 
 
+def test_socket_timeout_falls_back_instead_of_killing_the_run(tmp_path, monkeypatch) -> None:
+    # A read timeout surfaces as a bare TimeoutError out of ssl, not a URLError.
+    # It escaped once and aborted a whole evaluation; the fallback must hold for
+    # any provider failure, not just the tidy ones.
+    from npabench.missions.crafting import prompting
+
+    def _timeout(task, *, attempt=0):
+        raise TimeoutError("The read operation timed out")
+
+    monkeypatch.setattr(prompting, "_generate_prompt", _timeout)
+    _, config = _mission_and_config()
+    task = generate_task(config, seed=6)
+    materialized = prompting.materialize_task_prompt(task, tmp_path)
+
+    assert unfaithful_targets(materialized.prompt, task.targets) == []
+    assert materialized.prompt_metadata is not None
+    assert materialized.prompt_metadata.provider == "template"
+
+
 def test_unfaithful_generation_is_retried_then_falls_back(tmp_path, monkeypatch) -> None:
     from npabench.missions.base import PromptMetadata
     from npabench.missions.crafting import prompting
