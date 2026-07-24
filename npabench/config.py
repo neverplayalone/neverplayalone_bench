@@ -48,3 +48,15 @@ REPLAYMOD_FILE_FORMAT_VERSION = 14
 MINECRAFT_PROTOCOL_TO_VERSION = {
     774: DEFAULT_MINECRAFT_VERSION,
 }
+
+# Data pack format for DEFAULT_MINECRAFT_VERSION, as [major, minor].
+#
+# 1.21.11 requires the `min_format` / `max_format` pair; the older
+# `pack_format` + `supported_formats: {min_inclusive, max_inclusive}` spelling is
+# rejected outright ("missing mandatory fields min_format and max_format"), which
+# silently drops the pack and makes the server fall back to default worldgen.
+#
+# After a Minecraft version bump, read the correct value out of a generated
+# world at `<world>/datapacks/bukkit/pack.mcmeta` -- Paper writes its own pack
+# with the format the server actually expects.
+DATAPACK_FORMAT = [94, 1]
