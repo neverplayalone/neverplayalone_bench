@@ -7,7 +7,7 @@ from pathlib import Path
 
 from rich.console import Console
 
-from npabench.config import DOCKER_DIR
+from npabench.config import DATAPACK_FORMAT, DOCKER_DIR
 from npabench.evaluation.run_slot import AgentRunSlot
 from npabench.minecraft.rcon_client import rcon_session
 from npabench.minecraft.server_probe import wait_for_ready
@@ -26,9 +26,9 @@ def write_biome_datapack(data_dir: Path, biome: str) -> None:
         json.dumps(
             {
                 "pack": {
-                    "pack_format": 48,
                     "description": "npabench single-biome world",
-                    "supported_formats": {"min_inclusive": 4, "max_inclusive": 999},
+                    "min_format": DATAPACK_FORMAT,
+                    "max_format": DATAPACK_FORMAT,
                 }
             }
         )
