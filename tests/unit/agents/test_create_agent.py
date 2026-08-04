@@ -22,4 +22,4 @@ def test_create_agent_returns_sandboxed_agent(tmp_path) -> None:
         agent_run_slot=AgentRunSlot.allocate(slot_id=3, data_root=tmp_path / "slot"),
     )
     assert isinstance(agent, SandboxedAgent)
-    assert agent.container_name == "npabench-agent-3"
+    assert agent.container_name == "npabench-eval-3-agent"

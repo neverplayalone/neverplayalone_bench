@@ -4,7 +4,7 @@ import os
 import signal
 import subprocess
 import threading
-from typing import Iterator
+from typing import Iterator, TextIO
 
 from npabench.agents.base import Agent, AgentRunContext
 from npabench.agents.event_stream import pump_trace_events
@@ -42,7 +42,9 @@ class SubprocessAgent(Agent):
         )
 
         self._stderr_thread = threading.Thread(
-            target=self._drain_stderr, daemon=True
+            target=self._drain_stderr,
+            args=(self.child_process.stderr,),
+            daemon=True,
         )
         self._stderr_thread.start()
 
@@ -53,21 +55,28 @@ class SubprocessAgent(Agent):
         )
 
     def stop(self) -> None:
-        if not self.child_process:
+        process = self.child_process
+        if not process:
             return
-        if self.child_process.poll() is None:
+        if process.poll() is None:
             try:
-                self.child_process.send_signal(signal.SIGTERM)
-                self.child_process.wait(timeout=5)
+                process.send_signal(signal.SIGTERM)
+                process.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                self.child_process.kill()
+                process.kill()
+                process.wait(timeout=5)
+        if self._stderr_thread is not None:
+            self._stderr_thread.join(timeout=2)
+            self._stderr_thread = None
         self.child_process = None
 
     @property
     def stderr_log(self) -> list[str]:
         return list(self._stderr_lines)
 
-    def _drain_stderr(self) -> None:
-        assert self.child_process and self.child_process.stderr
-        for line in self.child_process.stderr:
+    def _drain_stderr(self, stream: TextIO) -> None:
+        # Capture the stream before the thread starts. `stop()` is allowed to
+        # clear `child_process` as soon as the process exits, and looking it up
+        # again here races with fast agents and test doubles.
+        for line in stream:
             self._stderr_lines.append(line.rstrip("\n"))

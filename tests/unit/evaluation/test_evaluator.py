@@ -9,10 +9,42 @@ from npabench.evaluation.evaluate import (
     AgentBatchReport,
     AgentMode,
     AgentRunReport,
+    _batch_environment_evidence_reasons,
     evaluate_multiple_agents,
     evaluate_single_agent,
 )
 from npabench.missions.base import MissionConfig
+
+
+def test_batch_marks_different_starting_spawns_as_invalid(tmp_path) -> None:
+    def report(name: str, spawn: list[int]) -> AgentRunReport:
+        output = tmp_path / name
+        return AgentRunReport(
+            agent_name=name,
+            agent_kind=None,
+            mission_id="resource_gathering",
+            task_id="task",
+            task_prompt="gather",
+            seed=7,
+            minecraft_seed=77,
+            score=50.0,
+            max_score=100.0,
+            status="ok",
+            output_dir=output,
+            trace_path=output / "trace.json",
+            recording_path=None,
+            raw={"spawn": {"position": spawn}},
+        )
+
+    reasons = _batch_environment_evidence_reasons(
+        {
+            "baseline": report("baseline", [0, 64, 0]),
+            "candidate": report("candidate", [8, 70, -3]),
+        }
+    )
+
+    assert len(reasons) == 1
+    assert reasons[0].startswith("non_identical_starting_spawn:")
 
 
 def test_evaluate_returns_typed_report(monkeypatch, tmp_path, fake_mission) -> None:

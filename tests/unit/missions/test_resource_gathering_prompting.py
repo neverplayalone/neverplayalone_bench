@@ -80,11 +80,14 @@ def test_materialize_task_prompt_reuses_cached_prompt(tmp_path) -> None:
     assert materialized.prompt_metadata == cached.prompt_metadata
 
 
-def test_materialize_task_prompt_requires_openai_config_when_cache_missing(tmp_path, monkeypatch) -> None:
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+def test_materialize_task_prompt_requires_provider_config_when_cache_missing(
+    tmp_path, monkeypatch
+) -> None:
+    monkeypatch.setenv("NPABENCH_PROMPT_PROVIDER", "openrouter")
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     monkeypatch.delenv("NPABENCH_PROMPT_MODEL", raising=False)
 
-    with pytest.raises(RuntimeError, match="OPENAI_API_KEY"):
+    with pytest.raises(RuntimeError, match="OPENROUTER_API_KEY"):
         materialize_task_prompt(_sample_task(), tmp_path)
 
 

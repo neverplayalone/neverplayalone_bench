@@ -15,14 +15,25 @@ def configure_resource_gathering_world(
     rcon: MCRcon,
     mission_config: ResourceGatheringMissionConfig,
 ) -> None:
-    command_with_retry(rcon, "gamerule keep_inventory false")
-    command_with_retry(rcon, "gamerule advance_time true")
-    command_with_retry(rcon, "gamerule advance_weather true")
-    command_with_retry(rcon, "gamerule doMobSpawning false")
-    command_with_retry(rcon, f"difficulty {mission_config.difficulty}")
-    command_with_retry(rcon, f"time set {mission_config.spawn_time}")
-    command_with_retry(rcon, "worldborder center 0 0")
-    command_with_retry(rcon, f"worldborder set {mission_config.world_size}")
+    # This is configured while the immutable reference world is built, before
+    # any evaluated player joins.  Persisting a zero spawn radius in that
+    # snapshot guarantees every cloned lane starts at the same block.  Setting
+    # it only in setup_resource_gathering_agent is too late: a first-time
+    # player has already been placed at a random point in the vanilla spawn
+    # radius by then.
+    command_with_retry(rcon, "gamerule respawn_radius 0", require_success=True)
+    command_with_retry(rcon, "gamerule keep_inventory false", require_success=True)
+    command_with_retry(rcon, "gamerule advance_time true", require_success=True)
+    command_with_retry(rcon, "gamerule advance_weather true", require_success=True)
+    command_with_retry(rcon, "gamerule spawn_mobs false", require_success=True)
+    command_with_retry(rcon, f"difficulty {mission_config.difficulty}", require_success=True)
+    command_with_retry(rcon, f"time set {mission_config.spawn_time}", require_success=True)
+    command_with_retry(rcon, "worldborder center 0 0", require_success=True)
+    command_with_retry(
+        rcon,
+        f"worldborder set {mission_config.world_size}",
+        require_success=True,
+    )
 
 
 def setup_resource_gathering_agent(

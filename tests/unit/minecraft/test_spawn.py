@@ -20,7 +20,7 @@ def test_set_exact_spawn_issues_expected_commands() -> None:
 
     assert spawn == (12, 72, -8)
     assert rcon.commands == [
-        "gamerule spawnRadius 0",
+        "gamerule respawn_radius 0",
         "setworldspawn 12 72 -8",
         "spawnpoint npabench_agent 12 72 -8",
         "tp npabench_agent 12.5 72 -7.5 0 0",

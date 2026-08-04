@@ -13,10 +13,18 @@ def set_exact_spawn(
     y: int,
     z: int,
 ) -> tuple[int, int, int]:
-    command_with_retry(rcon, "gamerule spawnRadius 0")
-    command_with_retry(rcon, f"setworldspawn {x} {y} {z}")
-    command_with_retry(rcon, f"spawnpoint {username} {x} {y} {z}")
-    command_with_retry(rcon, f"tp {username} {x + 0.5} {y} {z + 0.5} 0 0")
+    # Minecraft 1.21.11 exposes gamerules as snake_case and renamed the old
+    # spawnRadius rule to respawn_radius.  The old spelling returns an error
+    # string over RCON rather than raising, so it could silently leave the
+    # vanilla random radius enabled.
+    command_with_retry(rcon, "gamerule respawn_radius 0", require_success=True)
+    command_with_retry(rcon, f"setworldspawn {x} {y} {z}", require_success=True)
+    command_with_retry(rcon, f"spawnpoint {username} {x} {y} {z}", require_success=True)
+    command_with_retry(
+        rcon,
+        f"tp {username} {x + 0.5} {y} {z + 0.5} 0 0",
+        require_success=True,
+    )
     return (x, y, z)
 
 

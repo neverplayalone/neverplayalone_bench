@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from npabench.missions.base import StartingItem
-from npabench.missions.resource_gathering.environment import starting_item_stack
+from npabench.missions.resource_gathering.environment import (
+    configure_resource_gathering_world,
+    starting_item_stack,
+)
 from npabench.missions.resource_gathering import ResourceGatheringMission
 from npabench.missions.resource_gathering.task import ESSENTIAL_TARGET_KEYS, generate_task
 
@@ -76,3 +79,25 @@ def test_starting_item_stack_serializes_enchantments() -> None:
     assert item_stack.startswith("minecraft:diamond_pickaxe[")
     assert '"minecraft:efficiency":4' in item_stack
     assert '"minecraft:fortune":3' in item_stack
+
+
+class _RecordingRcon:
+    def __init__(self) -> None:
+        self.commands: list[str] = []
+
+    def command(self, command: str) -> str:
+        self.commands.append(command)
+        return ""
+
+
+def test_reference_world_disables_random_spawn_radius_before_cloning() -> None:
+    mission = ResourceGatheringMission()
+    base_config = mission.load_config(mission.default_config_path())
+    config = mission.build_mission_config(base_config, generate_task(base_config, seed=7))
+    rcon = _RecordingRcon()
+
+    configure_resource_gathering_world(rcon, config)
+
+    assert rcon.commands[0] == "gamerule respawn_radius 0"
+    assert "gamerule spawn_mobs false" in rcon.commands
+    assert not any("doMobSpawning" in command for command in rcon.commands)

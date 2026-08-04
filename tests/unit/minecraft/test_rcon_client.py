@@ -3,6 +3,7 @@ from __future__ import annotations
 import inspect
 
 from mcrcon import MCRconException
+import pytest
 
 from npabench.minecraft.rcon_client import (
     DEFAULT_SOCKET_TIMEOUT,
@@ -46,3 +47,23 @@ def test_rcon_session_uses_longer_default_command_timeout() -> None:
     default_timeout = inspect.signature(rcon_session).parameters["socket_timeout"].default
 
     assert default_timeout == DEFAULT_SOCKET_TIMEOUT == 20.0
+
+
+class _RejectedRcon:
+    def command(self, command: str) -> str:
+        return f"Incorrect argument for command\n{command}<--[HERE]"
+
+
+def test_strict_rcon_command_rejects_brigadier_error_response() -> None:
+    with pytest.raises(RuntimeError, match="Minecraft rejected RCON command"):
+        command_with_retry(
+            _RejectedRcon(),
+            "gamerule spawnRadius 0",
+            require_success=True,
+        )
+
+
+def test_non_strict_rcon_command_preserves_expected_error_responses() -> None:
+    response = command_with_retry(_RejectedRcon(), "scoreboard objectives remove missing")
+
+    assert response.startswith("Incorrect argument for command")

@@ -4,7 +4,7 @@ import hashlib
 import subprocess
 import threading
 from pathlib import Path
-from typing import Iterator
+from typing import Iterator, TextIO
 
 from rich.console import Console
 
@@ -128,7 +128,12 @@ class SandboxedAgent(Agent):
             bufsize=1,
         )
 
-        self._stderr_thread = threading.Thread(target=self._drain_stderr, daemon=True)
+        assert self.child_process.stderr is not None
+        self._stderr_thread = threading.Thread(
+            target=self._drain_stderr,
+            args=(self.child_process.stderr,),
+            daemon=True,
+        )
         self._stderr_thread.start()
 
         yield from pump_trace_events(
@@ -149,13 +154,16 @@ class SandboxedAgent(Agent):
                 self.child_process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 self.child_process.kill()
+                self.child_process.wait(timeout=5)
+        if self._stderr_thread is not None:
+            self._stderr_thread.join(timeout=2)
+            self._stderr_thread = None
         self.child_process = None
 
     @property
     def stderr_log(self) -> list[str]:
         return list(self._stderr_lines)
 
-    def _drain_stderr(self) -> None:
-        assert self.child_process and self.child_process.stderr
-        for line in self.child_process.stderr:
+    def _drain_stderr(self, stream: TextIO) -> None:
+        for line in stream:
             self._stderr_lines.append(line.rstrip("\n"))

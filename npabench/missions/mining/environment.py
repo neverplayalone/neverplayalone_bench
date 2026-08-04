@@ -31,14 +31,22 @@ def configure_mining_world(
     rcon: MCRcon,
     mission_config: MiningMissionConfig,
 ) -> None:
-    command_with_retry(rcon, "gamerule keep_inventory false")
-    command_with_retry(rcon, "gamerule advance_time true")
-    command_with_retry(rcon, "gamerule advance_weather true")
-    command_with_retry(rcon, "gamerule doMobSpawning false")
-    command_with_retry(rcon, f"difficulty {mission_config.difficulty}")
-    command_with_retry(rcon, f"time set {mission_config.spawn_time}")
-    command_with_retry(rcon, "worldborder center 0 0")
-    command_with_retry(rcon, f"worldborder set {mission_config.world_size}")
+    # Persist this in the reference snapshot before evaluated players join.
+    # Otherwise identical lanes receive different vanilla spawn-radius offsets,
+    # which confounds both the terrain and the distance multiplier.
+    command_with_retry(rcon, "gamerule respawn_radius 0", require_success=True)
+    command_with_retry(rcon, "gamerule keep_inventory false", require_success=True)
+    command_with_retry(rcon, "gamerule advance_time true", require_success=True)
+    command_with_retry(rcon, "gamerule advance_weather true", require_success=True)
+    command_with_retry(rcon, "gamerule spawn_mobs false", require_success=True)
+    command_with_retry(rcon, f"difficulty {mission_config.difficulty}", require_success=True)
+    command_with_retry(rcon, f"time set {mission_config.spawn_time}", require_success=True)
+    command_with_retry(rcon, "worldborder center 0 0", require_success=True)
+    command_with_retry(
+        rcon,
+        f"worldborder set {mission_config.world_size}",
+        require_success=True,
+    )
     if mission_config.deposit.enabled:
         _place_ore_deposit(rcon, mission_config)
 
@@ -69,6 +77,7 @@ def _place_ore_deposit(
         command_with_retry(
             rcon,
             f"fill {ox} {depth_y} {oz} {ox + width - 1} {depth_y} {oz + width - 1} minecraft:{ore_block}",
+            require_success=True,
         )
 
 

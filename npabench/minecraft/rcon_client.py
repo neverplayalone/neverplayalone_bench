@@ -88,6 +88,7 @@ def command_with_retry(
     *,
     attempts: int = SAFE_COMMAND_ATTEMPTS,
     retry_delay: float = 1.0,
+    require_success: bool = False,
 ) -> str:
     """Run an idempotent RCON command, reconnecting after transient failures.
 
@@ -112,9 +113,25 @@ def command_with_retry(
                 last_error = exc
                 continue
         try:
-            return rcon.command(command)
+            response = rcon.command(command)
+            if require_success and _command_response_is_error(response):
+                raise RuntimeError(
+                    f"Minecraft rejected RCON command {command!r}: {response}"
+                )
+            return response
         except (MCRconException, OSError) as exc:
             last_error = exc
 
     assert last_error is not None
     raise last_error
+
+
+def _command_response_is_error(response: str) -> bool:
+    """Recognize Brigadier syntax failures returned as ordinary RCON text."""
+
+    normalized = response.strip().lower()
+    return (
+        "incorrect argument for command" in normalized
+        or "unknown or incomplete command" in normalized
+        or normalized.startswith("unknown command")
+    )

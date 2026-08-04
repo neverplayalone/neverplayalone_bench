@@ -1,0 +1,47 @@
+id: resource_compare_smoke
+minecraft_version: "1.21.11"
+world_type: normal
+generate_structures: true
+difficulty: peaceful
+memory: 2G
+duration_seconds: 45
+world_size: 1000
+spawn_time: 0
+username: npabench_agent
+
+starting_items:
+  - item: netherite_pickaxe
+    count: 1
+  - item: netherite_axe
+    count: 1
+  - item: netherite_shovel
+    count: 1
+  - item: cooked_beef
+    count: 16
+  - item: cobblestone
+    count: 1
+  - item: beef
+    count: 1
+  - item: dirt
+    count: 1
+  - item: sand
+    count: 1
+
+menu:
+  resources:
+    logs:
+      items: [oak_log, birch_log, spruce_log]
+      target_range: [1, 1]
+    cobblestone:
+      items: [cobblestone]
+      target_range: [1, 1]
+    raw_meat:
+      display_name: raw meat
+      items: [beef]
+      target_range: [1, 1]
+    dirt:
+      items: [dirt]
+      target_range: [1, 1]
+    sand:
+      items: [sand]
+      target_range: [1, 1]

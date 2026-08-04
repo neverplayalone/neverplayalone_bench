@@ -26,6 +26,17 @@ def test_cli_run_help_smoke() -> None:
     assert "--no-sandbox" in result.output
 
 
+def test_cli_compare_help_smoke() -> None:
+    runner = CliRunner()
+    result = runner.invoke(main, ["compare", "--help"])
+
+    assert result.exit_code == 0
+    assert "--pairs-per-seed" in result.output
+    assert "--output-dir" in result.output
+    assert "BASELINE" in result.output
+    assert "CANDIDATE" in result.output
+
+
 def test_replay_exporter_missing_packet_log_error(tmp_path: Path) -> None:
     missing_log = tmp_path / "missing.jsonl.gz"
 

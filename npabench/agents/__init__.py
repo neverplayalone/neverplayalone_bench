@@ -27,7 +27,7 @@ def create_agent(
     if mode_value == "sandboxed":
         return SandboxedAgent(
             spec,
-            container_name=f"npabench-agent-{agent_run_slot.slot_id}",
+            container_name=f"{agent_run_slot.container_name}-agent",
             network_name=agent_run_slot.network_name,
             server_host=agent_run_slot.container_name,
             image=image,

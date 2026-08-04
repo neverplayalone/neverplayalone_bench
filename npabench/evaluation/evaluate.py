@@ -13,6 +13,7 @@ from npabench.agents.base import AgentSpec
 from npabench.config import DEFAULT_BASE_GAME_PORT, DEFAULT_BASE_RCON_PORT, RESULTS_DIR
 from npabench.evaluation.batch_runner import run_batch_evaluation
 from npabench.evaluation.reference_world import ReferenceWorldBuilder
+from npabench.evaluation.runtime import reserve_evaluation_runtime
 from npabench.evaluation.run_slot import AgentRunSlot
 from npabench.evaluation.single_runner import run_single_evaluation
 from npabench.missions.base import MissionConfig
@@ -53,6 +54,8 @@ class AgentBatchReport:
     minecraft_seed: int
     agents: dict[str, AgentRunReport]
     output_dir: Path
+    evidence_valid: bool = True
+    evidence_reasons: tuple[str, ...] = ()
 
 
 def _mission_config_summary(config: MissionConfig) -> dict[str, Any]:
@@ -104,32 +107,40 @@ def evaluate_single_agent(
     task = mission.materialize_task(base_config, task, root_output_dir)
     mission_config = mission.build_mission_config(base_config, task)
     (root_output_dir / "task.json").write_text(task.model_dump_json(indent=2))
-    reference_world_dir = ReferenceWorldBuilder().build(
-        mission,
-        mission_config,
-        root_output_dir / "reference_world",
+    with reserve_evaluation_runtime(
+        output_dir=root_output_dir,
+        slot_count=1,
         base_game_port=base_game_port,
         base_rcon_port=base_rcon_port,
-    )
-    agent_output_dir = root_output_dir / "agents" / safe_name(run_agent.name)
-    agent_run_slot = AgentRunSlot.allocate(
-        slot_id=0,
-        base_game_port=base_game_port,
-        base_rcon_port=base_rcon_port,
-        data_root=agent_output_dir / "_slot",
-        sidecar_containers=sidecar_containers,
-    )
-    return run_single_evaluation(
-        mission,
-        mission_config,
-        agent_run_slot,
-        run_agent,
-        reference_world_dir=reference_world_dir,
-        recording=record,
-        agent_mode=agent_mode,
-        output_dir=agent_output_dir,
-        task_seed=task.seed,
-    )
+    ) as runtime:
+        reference_world_dir = ReferenceWorldBuilder().build(
+            mission,
+            mission_config,
+            root_output_dir / "reference_world",
+            base_game_port=runtime.base_game_port,
+            base_rcon_port=runtime.base_rcon_port,
+            container_prefix=f"{runtime.namespace}-template",
+        )
+        agent_output_dir = root_output_dir / "agents" / safe_name(run_agent.name)
+        agent_run_slot = AgentRunSlot.allocate(
+            slot_id=0,
+            base_game_port=runtime.base_game_port,
+            base_rcon_port=runtime.base_rcon_port,
+            container_prefix=f"{runtime.namespace}-eval",
+            data_root=agent_output_dir / "_slot",
+            sidecar_containers=sidecar_containers,
+        )
+        return run_single_evaluation(
+            mission,
+            mission_config,
+            agent_run_slot,
+            run_agent,
+            reference_world_dir=reference_world_dir,
+            recording=record,
+            agent_mode=agent_mode,
+            output_dir=agent_output_dir,
+            task_seed=task.seed,
+        )
 
 
 def evaluate_multiple_agents(
@@ -174,35 +185,44 @@ def evaluate_multiple_agents(
         _mission_config_summary(mission_config),
     )
     (root_output_dir / "task.json").write_text(task.model_dump_json(indent=2))
-    reference_world_dir = ReferenceWorldBuilder().build(
-        mission,
-        mission_config,
-        root_output_dir / "reference_world",
+    with reserve_evaluation_runtime(
+        output_dir=root_output_dir,
+        slot_count=len(normalized_agents),
         base_game_port=base_game_port,
         base_rcon_port=base_rcon_port,
-    )
-    agent_run_slots = [
-        AgentRunSlot.allocate(
-            slot_id=index,
-            base_game_port=base_game_port,
-            base_rcon_port=base_rcon_port,
-            data_root=(root_output_dir / "agents" / safe_name(agent_spec.name) / "_slot"),
-            sidecar_containers=sidecar_containers,
+    ) as runtime:
+        reference_world_dir = ReferenceWorldBuilder().build(
+            mission,
+            mission_config,
+            root_output_dir / "reference_world",
+            base_game_port=runtime.base_game_port,
+            base_rcon_port=runtime.base_rcon_port,
+            container_prefix=f"{runtime.namespace}-template",
         )
-        for index, agent_spec in enumerate(normalized_agents)
-    ]
-    reports = run_batch_evaluation(
-        mission,
-        mission_config,
-        agent_run_slots,
-        normalized_agents,
-        reference_world_dir=reference_world_dir,
-        recording=record,
-        agent_mode=agent_mode,
-        output_dir=root_output_dir / "agents",
-        max_parallel=max_parallel,
-        task_seed=task.seed,
-    )
+        agent_run_slots = [
+            AgentRunSlot.allocate(
+                slot_id=index,
+                base_game_port=runtime.base_game_port,
+                base_rcon_port=runtime.base_rcon_port,
+                container_prefix=f"{runtime.namespace}-eval",
+                data_root=(root_output_dir / "agents" / safe_name(agent_spec.name) / "_slot"),
+                sidecar_containers=sidecar_containers,
+            )
+            for index, agent_spec in enumerate(normalized_agents)
+        ]
+        reports = run_batch_evaluation(
+            mission,
+            mission_config,
+            agent_run_slots,
+            normalized_agents,
+            reference_world_dir=reference_world_dir,
+            recording=record,
+            agent_mode=agent_mode,
+            output_dir=root_output_dir / "agents",
+            max_parallel=max_parallel,
+            task_seed=task.seed,
+        )
+    evidence_reasons = _batch_environment_evidence_reasons(reports)
     batch_report = AgentBatchReport(
         mission_id=mission_id,
         task_id=task.task_id,
@@ -210,6 +230,8 @@ def evaluate_multiple_agents(
         minecraft_seed=task.minecraft_seed,
         agents=reports,
         output_dir=root_output_dir,
+        evidence_valid=not evidence_reasons,
+        evidence_reasons=evidence_reasons,
     )
     (root_output_dir / "batch_report.json").write_text(
         json.dumps(
@@ -218,6 +240,8 @@ def evaluate_multiple_agents(
                 "task_id": batch_report.task_id,
                 "seed": batch_report.seed,
                 "minecraft_seed": batch_report.minecraft_seed,
+                "evidence_valid": batch_report.evidence_valid,
+                "evidence_reasons": list(batch_report.evidence_reasons),
                 "agents": {
                     agent_name: {
                         "agent_name": report.agent_name,
@@ -243,6 +267,26 @@ def evaluate_multiple_agents(
         )
     )
     return batch_report
+
+
+def _batch_environment_evidence_reasons(
+    reports: dict[str, AgentRunReport],
+) -> tuple[str, ...]:
+    """Return infrastructure confounds that invalidate cross-agent ranking."""
+
+    observed: dict[str, Any] = {}
+    for name, report in reports.items():
+        raw_spawn = report.raw.get("spawn")
+        if isinstance(raw_spawn, dict) and raw_spawn.get("position") is not None:
+            observed[name] = raw_spawn["position"]
+    canonical = {
+        json.dumps(position, sort_keys=True, separators=(",", ":"))
+        for position in observed.values()
+    }
+    if len(canonical) <= 1:
+        return ()
+    details = ", ".join(f"{name}={position!r}" for name, position in sorted(observed.items()))
+    return (f"non_identical_starting_spawn:{details}",)
 
 
 def parse_agent_assignment(raw: str) -> AgentSpec:
@@ -277,7 +321,7 @@ def _default_run_output_dir(output_dir: Path | None) -> Path:
 
 
 def _run_id_now() -> str:
-    return datetime.now().strftime("%Y%m%d_%H%M%S")
+    return datetime.now().strftime("%Y%m%d_%H%M%S_%f")
 
 
 def _normalize_agent(agent: AgentSpec | str | Path) -> AgentSpec:

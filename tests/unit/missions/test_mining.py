@@ -167,6 +167,9 @@ def test_deposit_disabled_places_no_ores() -> None:
     config = mission.build_mission_config(base, generate_task(base, seed=1))
     rcon = _RecordingRcon()
     configure_mining_world(rcon, config)
+    assert rcon.commands[0] == "gamerule respawn_radius 0"
+    assert "gamerule spawn_mobs false" in rcon.commands
+    assert not any("doMobSpawning" in command for command in rcon.commands)
     assert not any(command.startswith("fill ") for command in rcon.commands)
 
 
