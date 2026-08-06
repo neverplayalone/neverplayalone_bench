@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import json
-import math
-import random
 
 from mcrcon import MCRcon
 
@@ -11,10 +9,6 @@ from npabench.minecraft.rcon_helpers import read_score
 from npabench.minecraft.spawn import use_world_spawn
 from npabench.missions.base import StartingItem
 from npabench.missions.crafting_v2.config_schema import CraftingV2MissionConfig
-
-# Fixed salt: deterministic from the world seed, distinct from mining (0x304D494E)
-# and v1's deposit if it ever gets one. 0x43525632 = "CRV2".
-_DEPOSIT_SALT = 0x43525632
 
 
 def configure_crafting_v2_world(
@@ -32,48 +26,10 @@ def configure_crafting_v2_world(
     command_with_retry(rcon, f"time set {mission_config.spawn_time}")
     command_with_retry(rcon, "worldborder center 0 0")
     command_with_retry(rcon, f"worldborder set {mission_config.world_size}")
-    if mission_config.deposit.enabled:
-        _place_iron_deposit(rcon, mission_config)
-
-
-def _iron_demand(mission_config: CraftingV2MissionConfig) -> float:
-    """Total iron ingots the iron-band targets require this run, read from the
-    per-recipe cost that build_mission_config carried through."""
-    return sum(recipe.cost.iron * recipe.target_count for recipe in mission_config.recipes)
-
-
-def _place_iron_deposit(
-    rcon: MCRcon,
-    mission_config: CraftingV2MissionConfig,
-) -> None:
-    """Place a compact, guaranteed vein of each configured ore underground near
-    world spawn (0,0), so the iron tier is solvable regardless of seed ore-luck.
-
-    The iron vein is sized to the run's actual iron demand (times over_provision)
-    so partial mining still suffices; fuel ores get a fixed floor. Each ore sits
-    at its own depth so the agent still has to dig down. Placement is
-    deterministic from the world seed; the per-validator seed shifts the spot so
-    it can't be pre-memorised. Natural ores stay in the world -- this is a floor,
-    not the only source."""
-    settings = mission_config.deposit
-    rng = random.Random(mission_config.seed ^ _DEPOSIT_SALT)
-    base_x = rng.randint(-settings.offset_range, settings.offset_range)
-    base_z = rng.randint(-settings.offset_range, settings.offset_range)
-    iron_demand = _iron_demand(mission_config)
-    for ore in settings.ores.values():
-        if ore.scale_to == "iron":
-            drops_needed = math.ceil(iron_demand * settings.over_provision)
-            blocks_needed = max(ore.min_blocks, math.ceil(drops_needed / ore.drops_per_block))
-        else:
-            blocks_needed = ore.min_blocks
-        width = max(1, math.ceil(math.sqrt(blocks_needed)))
-        ox = base_x + rng.randint(-6, 6)
-        oz = base_z + rng.randint(-6, 6)
-        command_with_retry(
-            rcon,
-            f"fill {ox} {ore.depth_y} {oz} {ox + width - 1} {ore.depth_y} {oz + width - 1} "
-            f"minecraft:{ore.block}",
-        )
+    # No ore placement: iron is one of the most common ores, so the mission relies
+    # on the world's naturally generated iron (structures stay off, but ore veins
+    # are terrain, not structures, so natural iron is always present). This keeps
+    # the world fully natural and every land seed solvable.
 
 
 def setup_crafting_v2_agent(

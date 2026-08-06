@@ -28,9 +28,7 @@ class RecipeCost(BaseModel):
     logs: float = 0.0
     cobble: float = 0.0
     smelt_ops: float = 0.0
-    # Iron ingots per unit. Non-zero only for band C (iron); it is what the
-    # deterministic deposit sizes itself against, so it has to survive into the
-    # built config (see RecipeSpec.cost / environment._iron_demand).
+    # Iron ingots per unit; non-zero only for band C (iron). Catalog metadata.
     iron: float = 0.0
 
 
@@ -47,9 +45,6 @@ class RecipeSpec(BaseModel):
     band: Band = "A"
     target_count: int
     points: float = 0.0
-    # Carried from the catalog so configure_world can size the iron deposit from
-    # the run's actual per-target iron demand.
-    cost: RecipeCost = Field(default_factory=RecipeCost)
 
     @field_validator("target_count")
     @classmethod
@@ -101,41 +96,6 @@ class SamplingRules(BaseModel):
         if not input_value:
             raise ValueError("sampling needs at least one band")
         return input_value
-
-
-class OreDeposit(BaseModel):
-    """One ore in the guaranteed underground deposit."""
-
-    block: str
-    drops_per_block: int = 1
-    depth_y: int
-    # Floor on the vein size. For iron the actual size is the larger of this and
-    # the per-run demand; for fuel ores it is just this fixed amount.
-    min_blocks: int = 1
-    # When "iron", the vein is sized to the run's summed iron demand; None for a
-    # fixed-size fuel vein.
-    scale_to: Literal["iron"] | None = None
-
-    @field_validator("drops_per_block")
-    @classmethod
-    def drops_must_be_positive(cls, input_value: int) -> int:
-        if input_value <= 0:
-            raise ValueError("drops_per_block must be positive")
-        return input_value
-
-
-class DepositSettings(BaseModel):
-    """Guaranteed ore placement, mirroring the mining mission.
-
-    Hybrid: the world's naturally generated ores remain (structures are off, but
-    ore veins are terrain, not structures), so a skilled agent can find iron
-    faster while this vein guarantees no seed is ever a dead end. Salted by seed
-    so the exact spot can't be memorised."""
-
-    enabled: bool = True
-    offset_range: int = 16
-    over_provision: float = 1.5
-    ores: dict[str, OreDeposit] = Field(default_factory=dict)
 
 
 class ScoringRules(BaseModel):
@@ -219,6 +179,5 @@ class CraftingV2MissionConfig(MissionConfig):
     biomes: list[str] = Field(default_factory=list)
     scoring: ScoringRules = Field(default_factory=ScoringRules)
     sampling: SamplingRules = Field(default_factory=SamplingRules)
-    deposit: DepositSettings = Field(default_factory=DepositSettings)
     menu: RecipeMenu | None = None
     recipes: list[RecipeSpec] = Field(default_factory=list)

@@ -1,16 +1,10 @@
 from __future__ import annotations
 
-import math
-import re
 from collections import Counter
 
 from npabench.missions.crafting_v2 import CraftingV2Mission
 from npabench.missions.crafting_v2.config_schema import CraftingV2MissionConfig
-from npabench.missions.crafting_v2.environment import (
-    _iron_demand,
-    configure_crafting_v2_world,
-    setup_crafting_v2_agent,
-)
+from npabench.missions.crafting_v2.environment import setup_crafting_v2_agent
 from npabench.missions.crafting_v2.prompting import (
     PROMPT_SCHEMA_VERSION,
     fallback_prompt,
@@ -62,7 +56,6 @@ def test_iron_config_loads_with_the_v2_shape() -> None:
     # Biome unpinned: because logs are given, v2 runs in all world types.
     assert config.biomes == []
     assert config.menu is not None
-    assert config.deposit.enabled is True
 
 
 def test_given_items_are_not_also_scoring_targets() -> None:
@@ -166,7 +159,7 @@ def test_task_ids_name_the_iron_targets() -> None:
         assert key in task.task_id
 
 
-def test_build_config_threads_cost_and_carries_kit() -> None:
+def test_build_config_carries_kit_and_unpins_biome() -> None:
     mission, base = _mission_and_config()
     task = generate_task(base, seed=3)
     config = mission.build_mission_config(base, task)
@@ -175,51 +168,12 @@ def test_build_config_threads_cost_and_carries_kit() -> None:
     assert config.seed == task.minecraft_seed
     assert config.biome is None  # unpinned -> varied overworld
     assert config.menu is None
-    assert config.deposit.enabled is True
-    iron_recipes = [r for r in config.recipes if r.band == "C"]
-    assert iron_recipes and all(r.cost.iron > 0 for r in iron_recipes)
-    assert _iron_demand(config) > 0
+    assert [r for r in config.recipes if r.band == "C"]  # iron band survives
     # The kit survives into the built config so setup_agent can hand it over.
     assert {i.item for i in config.starting_items} == GIVEN_ITEMS
 
 
-# --- deterministic deposit + kit ----------------------------------------------
-
-def _fills(commands: list[str], block: str) -> list[str]:
-    return [c for c in commands if c.startswith("fill ") and c.endswith(f"minecraft:{block}")]
-
-
-def _fill_span(command: str) -> tuple[int, int]:
-    nums = [int(n) for n in re.findall(r"-?\d+", command)]
-    x1, _y1, z1, x2, _y2, z2 = nums[:6]
-    return abs(x2 - x1) + 1, abs(z2 - z1) + 1
-
-
-def test_places_iron_and_coal_veins_sized_to_demand() -> None:
-    mission, base = _mission_and_config()
-    config = mission.build_mission_config(base, generate_task(base, seed=42))
-    rcon = FakeRcon()
-    configure_crafting_v2_world(rcon, config)
-
-    iron_fills = _fills(rcon.commands, "iron_ore")
-    coal_fills = _fills(rcon.commands, "coal_ore")
-    assert len(iron_fills) == 1 and len(coal_fills) == 1
-
-    demand = _iron_demand(config)
-    needed = math.ceil(demand * config.deposit.over_provision)
-    wx, wz = _fill_span(iron_fills[0])
-    assert wx * wz >= needed, f"iron vein {wx}x{wz} < needed {needed}"
-    assert " 16 " in iron_fills[0] and " 40 " in coal_fills[0]  # iron deeper than fuel
-
-
-def test_deposit_is_deterministic_from_the_seed() -> None:
-    mission, base = _mission_and_config()
-    task = generate_task(base, seed=99)
-    a, b = FakeRcon(), FakeRcon()
-    configure_crafting_v2_world(a, mission.build_mission_config(base, task))
-    configure_crafting_v2_world(b, mission.build_mission_config(base, task))
-    assert _fills(a.commands, "iron_ore") == _fills(b.commands, "iron_ore")
-    assert _fills(a.commands, "coal_ore") == _fills(b.commands, "coal_ore")
+# --- kit ----------------------------------------------------------------------
 
 
 def test_setup_agent_gives_the_stone_tool_kit() -> None:
