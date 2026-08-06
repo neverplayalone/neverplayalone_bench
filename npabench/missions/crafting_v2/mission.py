@@ -86,8 +86,6 @@ class CraftingV2Mission(Mission):
                         band=target.band,
                         target_count=target.target_count,
                         points=target.points,
-                        # Carried so configure_world can size the iron deposit.
-                        cost=target.cost,
                     ).model_dump()
                     for target in crafting_task.targets
                 ],

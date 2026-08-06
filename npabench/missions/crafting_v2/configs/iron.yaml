@@ -21,10 +21,13 @@
 #   C -- Iron:     mine + double-smelt + craft. Iron tools + functional items.
 #                  66 pts -- an agent that reaches stone tier but no iron caps at 34.
 #
-# Structures stay OFF across all biomes: ore veins are terrain (natural iron is
-# still present -- the hybrid floor), while villages/mineshafts, which would hand
-# over craftable or looted items, do not generate. Anything GIVEN (stone tools,
-# logs) is excluded from the catalog, or it would be free points.
+# Iron comes from the world's NATURAL ore -- there is no placed deposit. Iron is
+# one of the most common ores (big generation peak around y~16), so digging down
+# near spawn finds it on any land seed. Structures stay OFF across all biomes: ore
+# veins are terrain, not structures, so natural iron is always present, while
+# villages/mineshafts (which would hand over craftable or looted items) do not
+# generate. Anything GIVEN (stone tools, logs) is excluded from the catalog, or
+# it would be free points.
 
 id: crafting_v2
 minecraft_version: "1.21.11"
@@ -74,27 +77,6 @@ sampling:
   bulk_threshold: 8
   min_bulk_targets: 2
   max_sample_attempts: 64
-
-deposit:
-  # Hybrid: natural ores remain; this is a guaranteed floor so no seed is a dead
-  # end. Iron vein sized to the run's iron demand * over_provision; coal is a
-  # fixed fuel option (the agent can also smelt logs into charcoal). Placed
-  # underground, so it works in every biome regardless of surface terrain.
-  enabled: true
-  offset_range: 16
-  over_provision: 1.5
-  ores:
-    iron:
-      block: iron_ore
-      drops_per_block: 1
-      depth_y: 16
-      min_blocks: 9
-      scale_to: iron
-    coal:
-      block: coal_ore
-      drops_per_block: 1
-      depth_y: 40
-      min_blocks: 8
 
 menu:
   recipes:
@@ -209,8 +191,8 @@ menu:
       cost: {logs: 0, cobble: 1, smelt_ops: 1, iron: 0}
       target_range: [1, 3]
     # ---- band C: Iron (mine iron ore, smelt, craft) ----
-    # cost.iron is iron ingots per unit and sizes the guaranteed deposit;
-    # smelt_ops counts the ore->ingot smelts. Tools + functional items only (no
+    # cost.iron is iron ingots per unit; smelt_ops counts the ore->ingot smelts
+    # (catalog metadata). Tools + functional items only (no
     # heavy iron_block/cauldron sinks). Two bulk items (iron_bars, rail) keep the
     # iron band's own score from being all binary count-1 targets.
     iron_bars:

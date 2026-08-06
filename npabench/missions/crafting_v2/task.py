@@ -9,7 +9,6 @@ from npabench.missions.crafting_v2.config_schema import (
     Band,
     CraftingV2MissionConfig,
     MenuEntry,
-    RecipeCost,
     RecipeMenu,
     SamplingRules,
 )
@@ -21,8 +20,6 @@ _BAND_ORDER = ["A", "B", "C"]
 
 class CraftingV2TaskTarget(TaskTarget):
     band: Band = "A"
-    # Carried from the catalog so the built config can size the iron deposit.
-    cost: RecipeCost = Field(default_factory=RecipeCost)
 
 
 class CraftingV2Task(Task):
@@ -124,5 +121,4 @@ def _build_task_target(
         target_count=target_count,
         band=band,
         points=points,
-        cost=menu_entry.cost,
     )
