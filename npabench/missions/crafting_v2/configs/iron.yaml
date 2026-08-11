@@ -249,9 +249,9 @@ menu:
       band: C
       cost: {logs: 0, cobble: 0, smelt_ops: 2, iron: 2}
       target_range: [1, 3]
-    chain:
-      display_name: Chain
-      items: [chain]
+    iron_chain:
+      display_name: Iron Chain
+      items: [iron_chain]  # renamed from `chain` in 1.21.11 (copper chains added)
       band: C
       cost: {logs: 0, cobble: 0, smelt_ops: 1.22, iron: 1.22}
       target_range: [1, 3]
