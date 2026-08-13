@@ -11,6 +11,7 @@ from rich.console import Console
 
 from npabench.agents import create_agent, ensure_agent_image
 from npabench.agents.base import Agent, AgentRunContext, AgentSpec
+from npabench.evaluation.craft_log import CraftAnnouncer
 from npabench.evaluation.movement_monitor import MovementMonitor
 from npabench.evaluation.reference_world import (
     cleanup_run_worlds,
@@ -67,6 +68,7 @@ def run_single_evaluation(
     phase = _AgentPhaseState()
     recorder: Recorder | None = None
     movement_monitor: MovementMonitor | None = None
+    craft_log: CraftAnnouncer | None = None
     movement_report: dict[str, Any] | None = None
     final_snapshot: dict[str, Any] | None = None
     agent = create_agent(agent_spec, agent_mode=agent_mode, agent_run_slot=agent_run_slot)
@@ -95,6 +97,16 @@ def run_single_evaluation(
                     agent_run_trace,
                 )
             movement_monitor = _create_movement_monitor(server_endpoint, mission_config)
+            # Benchmark-side "crafted X" messages for the recording -- crafting is
+            # otherwise invisible to the spectator recorder. Only while recording.
+            if recorder is not None:
+                craft_log = CraftAnnouncer(
+                    host=server_endpoint.host,
+                    rcon_port=server_endpoint.rcon_port,
+                    rcon_password=server_endpoint.rcon_password,
+                    username=mission_config.username,
+                    mission_config=mission_config,
+                )
             _run_agent_protocol(
                 mission=mission,
                 mission_config=mission_config,
@@ -102,6 +114,7 @@ def run_single_evaluation(
                 server_endpoint=server_endpoint,
                 recorder=recorder,
                 movement_monitor=movement_monitor,
+                craft_log=craft_log,
                 agent_run_trace=agent_run_trace,
                 phase=phase,
                 task_seed=task_seed,
@@ -121,6 +134,8 @@ def run_single_evaluation(
                             },
                         )
                     )
+            if craft_log is not None:
+                craft_log.stop()
             final_snapshot = _capture_final_state(
                 mission,
                 mission_config,
@@ -292,6 +307,7 @@ def _run_agent_protocol(
     server_endpoint: ServerEndpoint,
     recorder: Recorder | None,
     movement_monitor: MovementMonitor | None,
+    craft_log: CraftAnnouncer | None,
     agent_run_trace: AgentRunTrace,
     phase: _AgentPhaseState,
     task_seed: int | None,
@@ -312,6 +328,8 @@ def _run_agent_protocol(
             )
             if movement_monitor is not None:
                 movement_monitor.start()
+            if craft_log is not None:
+                craft_log.start()
         if event.kind == "done":
             break
 
