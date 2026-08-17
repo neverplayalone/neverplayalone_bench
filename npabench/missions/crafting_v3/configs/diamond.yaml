@@ -8,24 +8,20 @@
 #
 # Given items (iron tools, logs) and the pure-wood items are excluded from the
 # catalog, or they would be free points. Every remaining target still requires
-# the agent to mine it -- cobble, or diamonds it must descend for.
+# the agent to mine what it needs -- cobble, iron ore, or diamonds.
 #
-# Three tiers -- a real tech ascent (stone -> iron -> diamond), matched to the
-# iron kit rather than repeating v2's lead-up:
-#   A -- Basic:    crafting table only. Cobblestone building items (mine cobble
-#                  with the given iron pick). ~14 pts.
-#   B -- Iron:     mine iron ore (~y16, on the way down), smelt it, craft iron
-#                  gear. The mid-tier -- and its descent is on the path to diamond.
-#                  ~20 pts.
-#   C -- Diamond:  descend to y~-59, mine diamonds with the iron pickaxe, craft
-#                  diamond tools/armor/blocks. 66 pts -- reach iron tier but no
-#                  diamond and you cap at 34.
+# Three tiers -- a tech ascent (stone -> iron -> diamond), matched to the iron
+# kit rather than repeating v2's lead-up:
+#   A -- Basic:    crafting table only. Cobblestone building items. ~14 pts.
+#   B -- Iron:     mine iron ore, smelt it, craft iron gear. The mid-tier. ~20 pts.
+#   C -- Diamond:  mine diamonds with the iron pickaxe, craft diamond tools/armor/
+#                  blocks. 66 pts -- reach iron tier but no diamond and you cap at 34.
 #
 # Diamonds come from the world's NATURAL ore -- there is NO placed deposit (pure,
-# by design). They are rare and deep (peak ~y=-59) and lava-guarded, so this is
-# the hardest tier: a real ObtainDiamond descent. Structures stay OFF across all
-# biomes -- ore is terrain, so natural diamond is present, while villages/
-# mineshafts (which would hand over craftable/looted items) do not generate.
+# by design). They are rare and lava-guarded, so this is the hardest tier.
+# Structures stay OFF across all biomes -- ore is terrain, so natural diamond is
+# present, while villages/mineshafts (which would hand over craftable/looted
+# items) do not generate.
 
 id: crafting_v3
 minecraft_version: "1.21.11"
@@ -33,8 +29,8 @@ world_type: normal
 generate_structures: false
 difficulty: peaceful
 memory: 2G
-# 900s: longer than v2 -- the diamond tier needs a deep descent to y~-59 and back,
-# which eats time no amount of tooling removes.
+# 900s: longer than v2 -- reaching the diamond tier takes more time than iron,
+# and no amount of tooling removes it.
 duration_seconds: 900
 world_size: 10000
 spawn_time: 0
@@ -101,7 +97,7 @@ menu:
       band: A
       cost: {logs: 0.13, cobble: 1, smelt_ops: 0, iron: 0, diamond: 0}
       target_range: [6, 15]
-    # ---- band B: Iron (mine iron ore ~y16, smelt, craft iron gear -- on the way to diamond) ----
+    # ---- band B: Iron (mine iron ore, smelt, craft iron gear) ----
     # iron pickaxe/axe are GIVEN, so they are excluded here. cost.iron is ingots
     # per unit; smelt_ops counts ore->ingot smelts. Two bulk items (iron_bars, rail).
     iron_bars:
@@ -176,7 +172,7 @@ menu:
       band: B
       cost: {logs: 0, cobble: 0, smelt_ops: 4, iron: 4, diamond: 0}
       target_range: [1, 2]
-    # ---- band C: Diamond (descend to y~-59, mine with the iron pickaxe, craft) ----
+    # ---- band C: Diamond (mine with the iron pickaxe, craft) ----
     # cost.diamond is diamonds per unit (catalog metadata). Diamond items need no
     # smelting -- diamonds are mined and crafted directly -- so smelt_ops is 0. All
     # are reachable from the kit: diamonds (iron pick) + sticks/planks (given logs).

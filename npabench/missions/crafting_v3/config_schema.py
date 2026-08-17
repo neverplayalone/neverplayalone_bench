@@ -14,8 +14,8 @@ from npabench.missions.base import MissionConfig, StartingItem
 # The three bands are a real tech ascent, matched to the iron kit:
 #   A -- Basic:   crafting table only (cobblestone building items)
 #   B -- Iron:    mine iron ore, smelt it, craft iron gear (the mid-tier)
-#   C -- Diamond: descend to y~-59, mine diamonds with the iron pickaxe, craft
-#                 diamond tools/armor/blocks -- the mission's focus
+#   C -- Diamond: mine diamonds with the iron pickaxe, craft diamond
+#                 tools/armor/blocks -- the mission's focus
 # Letters keep their natural order (A < B < C) so "the highest band present" is
 # always the diamond one; see task.build_task_id.
 Band = Literal["A", "B", "C"]
