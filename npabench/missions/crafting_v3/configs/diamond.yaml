@@ -10,14 +10,16 @@
 # catalog, or they would be free points. Every remaining target still requires
 # the agent to mine it -- cobble, or diamonds it must descend for.
 #
-# Three tiers (letters ordered A<B<C so the diamond band is always "highest"):
-#   A -- Basic:    crafting table only. Cobblestone items + basic stone tools
-#                  (mine cobble; sticks come from the given logs). ~14 pts.
-#   B -- Smelting: a placed furnace + fuel. The stone family, charcoal, torch.
+# Three tiers -- a real tech ascent (stone -> iron -> diamond), matched to the
+# iron kit rather than repeating v2's lead-up:
+#   A -- Basic:    crafting table only. Cobblestone building items (mine cobble
+#                  with the given iron pick). ~14 pts.
+#   B -- Iron:     mine iron ore (~y16, on the way down), smelt it, craft iron
+#                  gear. The mid-tier -- and its descent is on the path to diamond.
 #                  ~20 pts.
 #   C -- Diamond:  descend to y~-59, mine diamonds with the iron pickaxe, craft
-#                  diamond tools/armor/blocks. 66 pts -- reach stone/iron tier but
-#                  no diamond and you cap at 34.
+#                  diamond tools/armor/blocks. 66 pts -- reach iron tier but no
+#                  diamond and you cap at 34.
 #
 # Diamonds come from the world's NATURAL ore -- there is NO placed deposit (pure,
 # by design). They are rare and deep (peak ~y=-59) and lava-guarded, so this is
@@ -63,7 +65,7 @@ scoring:
   distance_floor_mult: 0.20
 
 sampling:
-  # 2*7 + 2*10 + 3*22 = 100. Basic+Smelting = 34 (pre-iron ceiling), Iron = 66.
+  # 2*7 + 2*10 + 3*22 = 100. Basic+Iron = 34 (pre-diamond ceiling), Diamond = 66.
   bands:
     A: {slots: 2, points: 7.0}
     B: {slots: 2, points: 10.0}
@@ -74,116 +76,106 @@ sampling:
 
 menu:
   recipes:
-    # ---- band A: Basic (crafting table only; mine cobble, sticks from given logs) ----
+    # ---- band A: Basic (crafting table only; mine cobble with the given iron pick) ----
     cobblestone_slab:
       display_name: Cobblestone Slab
       items: [cobblestone_slab]
       band: A
-      cost: {logs: 0, cobble: 0.5, smelt_ops: 0, iron: 0}
+      cost: {logs: 0, cobble: 0.5, smelt_ops: 0, iron: 0, diamond: 0}
       target_range: [16, 40]
     cobblestone_wall:
       display_name: Cobblestone Wall
       items: [cobblestone_wall]
       band: A
-      cost: {logs: 0, cobble: 1, smelt_ops: 0, iron: 0}
+      cost: {logs: 0, cobble: 1, smelt_ops: 0, iron: 0, diamond: 0}
       target_range: [8, 20]
     cobblestone_stairs:
       display_name: Cobblestone Stairs
       items: [cobblestone_stairs]
       band: A
-      cost: {logs: 0, cobble: 1.5, smelt_ops: 0, iron: 0}
+      cost: {logs: 0, cobble: 1.5, smelt_ops: 0, iron: 0, diamond: 0}
       target_range: [5, 13]
     lever:
       display_name: Lever
       items: [lever]
       band: A
-      cost: {logs: 0.13, cobble: 1, smelt_ops: 0, iron: 0}
+      cost: {logs: 0.13, cobble: 1, smelt_ops: 0, iron: 0, diamond: 0}
       target_range: [6, 15]
-    stone_shovel:
-      display_name: Stone Shovel
-      items: [stone_shovel]
-      band: A
-      cost: {logs: 0.25, cobble: 1, smelt_ops: 0, iron: 0}
-      target_range: [2, 6]
-    stone_hoe:
-      display_name: Stone Hoe
-      items: [stone_hoe]
-      band: A
-      cost: {logs: 0.25, cobble: 2, smelt_ops: 0, iron: 0}
-      target_range: [2, 5]
-    stone_sword:
-      display_name: Stone Sword
-      items: [stone_sword]
-      band: A
-      cost: {logs: 0.13, cobble: 2, smelt_ops: 0, iron: 0}
-      target_range: [2, 6]
-    # ---- band B: Smelting (placed furnace + fuel) ----
-    torch:
-      display_name: Torch
-      items: [torch]
+    # ---- band B: Iron (mine iron ore ~y16, smelt, craft iron gear -- on the way to diamond) ----
+    # iron pickaxe/axe are GIVEN, so they are excluded here. cost.iron is ingots
+    # per unit; smelt_ops counts ore->ingot smelts. Two bulk items (iron_bars, rail).
+    iron_bars:
+      display_name: Iron Bars
+      items: [iron_bars]
       band: B
-      cost: {logs: 0.28, cobble: 0, smelt_ops: 0.25, iron: 0}
-      target_range: [4, 12]
-    charcoal:
-      display_name: Charcoal
-      items: [charcoal]
+      cost: {logs: 0, cobble: 0, smelt_ops: 0.375, iron: 0.375, diamond: 0}
+      target_range: [8, 16]
+    rail:
+      display_name: Rail
+      items: [rail]
       band: B
-      cost: {logs: 1, cobble: 0, smelt_ops: 1, iron: 0}
-      target_range: [2, 5]
-    stone:
-      display_name: Stone
-      items: [stone]
+      cost: {logs: 0.06, cobble: 0, smelt_ops: 0.375, iron: 0.375, diamond: 0}
+      target_range: [8, 16]
+    iron_shovel:
+      display_name: Iron Shovel
+      items: [iron_shovel]
       band: B
-      cost: {logs: 0, cobble: 1, smelt_ops: 1, iron: 0}
-      target_range: [2, 6]
-    stone_bricks:
-      display_name: Stone Bricks
-      items: [stone_bricks]
-      band: B
-      cost: {logs: 0, cobble: 1, smelt_ops: 1, iron: 0}
-      target_range: [2, 6]
-    stone_slab:
-      display_name: Stone Slab
-      items: [stone_slab]
-      band: B
-      cost: {logs: 0, cobble: 0.5, smelt_ops: 0.5, iron: 0}
-      target_range: [2, 8]
-    stone_brick_slab:
-      display_name: Stone Brick Slab
-      items: [stone_brick_slab]
-      band: B
-      cost: {logs: 0, cobble: 0.5, smelt_ops: 0.5, iron: 0}
-      target_range: [2, 8]
-    stone_stairs:
-      display_name: Stone Stairs
-      items: [stone_stairs]
-      band: B
-      cost: {logs: 0, cobble: 1.5, smelt_ops: 1.5, iron: 0}
-      target_range: [2, 4]
-    stone_brick_stairs:
-      display_name: Stone Brick Stairs
-      items: [stone_brick_stairs]
-      band: B
-      cost: {logs: 0, cobble: 1.5, smelt_ops: 1.5, iron: 0}
-      target_range: [2, 4]
-    stone_brick_wall:
-      display_name: Stone Brick Wall
-      items: [stone_brick_wall]
-      band: B
-      cost: {logs: 0, cobble: 1, smelt_ops: 1, iron: 0}
-      target_range: [2, 4]
-    smooth_stone:
-      display_name: Smooth Stone
-      items: [smooth_stone]
-      band: B
-      cost: {logs: 0, cobble: 1, smelt_ops: 2, iron: 0}
+      cost: {logs: 0.25, cobble: 0, smelt_ops: 1, iron: 1, diamond: 0}
       target_range: [1, 3]
-    chiseled_stone_bricks:
-      display_name: Chiseled Stone Bricks
-      items: [chiseled_stone_bricks]
+    shears:
+      display_name: Shears
+      items: [shears]
       band: B
-      cost: {logs: 0, cobble: 1, smelt_ops: 1, iron: 0}
+      cost: {logs: 0, cobble: 0, smelt_ops: 2, iron: 2, diamond: 0}
       target_range: [1, 3]
+    iron_sword:
+      display_name: Iron Sword
+      items: [iron_sword]
+      band: B
+      cost: {logs: 0.13, cobble: 0, smelt_ops: 2, iron: 2, diamond: 0}
+      target_range: [1, 2]
+    iron_hoe:
+      display_name: Iron Hoe
+      items: [iron_hoe]
+      band: B
+      cost: {logs: 0.25, cobble: 0, smelt_ops: 2, iron: 2, diamond: 0}
+      target_range: [1, 2]
+    heavy_weighted_pressure_plate:
+      display_name: Heavy Weighted Pressure Plate
+      items: [heavy_weighted_pressure_plate]
+      band: B
+      cost: {logs: 0, cobble: 0, smelt_ops: 2, iron: 2, diamond: 0}
+      target_range: [1, 2]
+    smithing_table:
+      display_name: Smithing Table
+      items: [smithing_table]
+      band: B
+      cost: {logs: 0.5, cobble: 0, smelt_ops: 2, iron: 2, diamond: 0}
+      target_range: [1, 2]
+    iron_door:
+      display_name: Iron Door
+      items: [iron_door]
+      band: B
+      cost: {logs: 0, cobble: 0, smelt_ops: 2, iron: 2, diamond: 0}
+      target_range: [1, 3]
+    iron_chain:
+      display_name: Iron Chain
+      items: [iron_chain]
+      band: B
+      cost: {logs: 0, cobble: 0, smelt_ops: 1.22, iron: 1.22, diamond: 0}
+      target_range: [1, 3]
+    bucket:
+      display_name: Bucket
+      items: [bucket]
+      band: B
+      cost: {logs: 0, cobble: 0, smelt_ops: 3, iron: 3, diamond: 0}
+      target_range: [1, 2]
+    iron_trapdoor:
+      display_name: Iron Trapdoor
+      items: [iron_trapdoor]
+      band: B
+      cost: {logs: 0, cobble: 0, smelt_ops: 4, iron: 4, diamond: 0}
+      target_range: [1, 2]
     # ---- band C: Diamond (descend to y~-59, mine with the iron pickaxe, craft) ----
     # cost.diamond is diamonds per unit (catalog metadata). Diamond items need no
     # smelting -- diamonds are mined and crafted directly -- so smelt_ops is 0. All

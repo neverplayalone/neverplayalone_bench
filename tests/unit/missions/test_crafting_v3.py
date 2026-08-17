@@ -101,18 +101,20 @@ def test_catalog_covers_every_band_with_room_to_sample() -> None:
         assert len(config.menu.keys_in_band(band)) >= rule.slots
 
 
-def test_diamond_band_requires_diamond_and_lower_bands_do_not() -> None:
+def test_bands_are_the_stone_iron_diamond_ascent() -> None:
+    # A Basic (cobble, no smelt/iron/diamond) -> B Iron (mine+smelt iron) ->
+    # C Diamond (mined + crafted directly, no smelting).
     _, config = _mission_and_config()
     assert config.menu is not None
     for key, entry in config.menu.recipes.items():
         if entry.band == "C":
             assert entry.cost.diamond > 0, f"{key} is diamond band but needs no diamond"
-            assert entry.cost.smelt_ops == 0, f"{key} diamond items are not smelted"
+            assert entry.cost.iron == 0 and entry.cost.smelt_ops == 0, f"{key} diamond needs no iron/smelt"
         elif entry.band == "B":
-            assert entry.cost.smelt_ops > 0, f"{key} is smelting band but never smelts"
+            assert entry.cost.iron > 0 and entry.cost.smelt_ops > 0, f"{key} is iron band but no iron/smelt"
             assert entry.cost.diamond == 0
-        else:  # A -- Basic: no smelting, no diamond
-            assert entry.cost.smelt_ops == 0 and entry.cost.diamond == 0
+        else:  # A -- Basic
+            assert entry.cost.smelt_ops == 0 and entry.cost.iron == 0 and entry.cost.diamond == 0
 
 
 # --- task generation ----------------------------------------------------------

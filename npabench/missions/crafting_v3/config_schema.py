@@ -6,19 +6,18 @@ from pydantic import BaseModel, Field, field_validator
 
 from npabench.missions.base import MissionConfig, StartingItem
 
-# crafting_v3 is a separate module from v1 on purpose: it starts the agent with a
-# stone-tool kit, restructures the tiers, and reaches into iron, so "v1 with a
-# different config" no longer describes it. Only the stable, band-agnostic
-# scoring/inventory helpers are shared with v1 (imported in mission.py).
+# crafting_v3 is a separate module from v1 on purpose: it starts the agent with an
+# iron-tool kit and reaches into diamond, so "v1 with a different config" no longer
+# describes it. Only the stable, band-agnostic scoring/inventory helpers are shared
+# with v1 (imported in mission.py).
 #
-# The three bands are the real capability ladder once stone tools are provided
-# (cobblestone is then free, so v1's "wooden pickaxe" gate disappears):
-#   A -- Basic:    crafting table only (wood + cobblestone items)
-#   B -- Smelting: a placed furnace + fuel (the stone family, charcoal, torch)
-#   C -- Iron:     mine iron ore, smelt it (a second smelting stage), craft iron
-#                  tools and functional items -- the mission's focus
+# The three bands are a real tech ascent, matched to the iron kit:
+#   A -- Basic:   crafting table only (cobblestone building items)
+#   B -- Iron:    mine iron ore, smelt it, craft iron gear (the mid-tier)
+#   C -- Diamond: descend to y~-59, mine diamonds with the iron pickaxe, craft
+#                 diamond tools/armor/blocks -- the mission's focus
 # Letters keep their natural order (A < B < C) so "the highest band present" is
-# always the iron one; see task.build_task_id.
+# always the diamond one; see task.build_task_id.
 Band = Literal["A", "B", "C"]
 
 
@@ -73,8 +72,8 @@ class BandRule(BaseModel):
 
 
 def _default_band_rules() -> dict[str, BandRule]:
-    # 2*7 + 2*10 + 3*22 = 100. Basic+Smelting = 34 (the pre-iron ceiling); iron
-    # carries 66, so an agent that reaches stone tier but never produces iron
+    # 2*7 + 2*10 + 3*22 = 100. Basic+Iron = 34 (the pre-diamond ceiling); diamond
+    # carries 66, so an agent that reaches iron tier but never produces diamond
     # caps at 34. Two Basic slots keep the bulk-target granularity rule easy.
     return {
         "A": BandRule(slots=2, points=7.0),
