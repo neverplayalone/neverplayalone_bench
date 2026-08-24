@@ -31,7 +31,7 @@ difficulty: peaceful
 memory: 2G
 # 900s: longer than v2 -- reaching the diamond tier takes more time than iron,
 # and no amount of tooling removes it.
-duration_seconds: 900
+duration_seconds: 720
 world_size: 10000
 spawn_time: 0
 username: npabench_agent
