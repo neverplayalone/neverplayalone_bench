@@ -3,6 +3,7 @@ from __future__ import annotations
 from npabench.missions.base import Mission
 from npabench.missions.crafting import CraftingMission
 from npabench.missions.crafting_v2 import CraftingV2Mission
+from npabench.missions.crafting_v3 import CraftingV3Mission
 from npabench.missions.mining import MiningMission
 from npabench.missions.resource_gathering import ResourceGatheringMission
 
@@ -11,6 +12,7 @@ _MISSIONS: list[Mission] = [
     MiningMission(),
     CraftingMission(),
     CraftingV2Mission(),
+    CraftingV3Mission(),
 ]
 
 MISSIONS: dict[str, Mission] = {mission.id: mission for mission in _MISSIONS}
