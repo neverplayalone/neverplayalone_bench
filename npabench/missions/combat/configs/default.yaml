@@ -1,0 +1,104 @@
+# Combat mission: prepare from empty hands, then fight seeded target waves.
+
+id: combat
+minecraft_version: "1.21.11"
+world_type: normal
+generate_structures: true
+difficulty: normal
+memory: 2G
+duration_seconds: 840
+world_size: 5000
+spawn_time: 1000
+username: npabench_agent
+
+phase:
+  preparation_seconds: 480
+  combat_seconds: 360
+  wave_offsets_seconds: [0, 90, 180, 270]
+  warning_offsets_seconds: [60, 10]
+  spawn_mobs_naturally: true
+
+tier_rules:
+  easy: {points: 20.0, target_kinds: 1, target_difficulty_units: 7.0, count_choice_slack: 1.0}
+  medium: {points: 35.0, target_kinds: 2, target_difficulty_units: 5.5, count_choice_slack: 0.8}
+  hard: {points: 45.0, target_kinds: 2, target_difficulty_units: 4.0, count_choice_slack: 0.75}
+
+menu:
+  easy:
+    mobs:
+      zombie:
+        entity_type: zombie
+        display_name: Zombie
+        target_range: [6, 8]
+        difficulty_weight: 1.0
+        drop_items: [rotten_flesh]
+        spawn_reserve_multiplier: 1.5
+      spider:
+        entity_type: spider
+        display_name: Spider
+        target_range: [6, 8]
+        difficulty_weight: 1.0
+        drop_items: [string, spider_eye]
+        spawn_reserve_multiplier: 1.5
+
+  medium:
+    mobs:
+      skeleton:
+        entity_type: skeleton
+        display_name: Skeleton
+        target_range: [2, 3]
+        difficulty_weight: 1.0
+        drop_items: [bone, arrow]
+        spawn_reserve_multiplier: 1.75
+      husk:
+        entity_type: husk
+        display_name: Husk
+        target_range: [2, 3]
+        difficulty_weight: 0.9
+        drop_items: [rotten_flesh]
+        spawn_reserve_multiplier: 1.75
+      drowned:
+        entity_type: drowned
+        display_name: Drowned
+        target_range: [2, 3]
+        difficulty_weight: 1.1
+        drop_items: [rotten_flesh, copper_ingot]
+        spawn_reserve_multiplier: 1.75
+      stray:
+        entity_type: stray
+        display_name: Stray
+        target_range: [2, 3]
+        difficulty_weight: 1.2
+        drop_items: [bone, arrow]
+        spawn_reserve_multiplier: 1.75
+
+  hard:
+    mobs:
+      creeper:
+        entity_type: creeper
+        display_name: Creeper
+        target_range: [1, 2]
+        difficulty_weight: 1.0
+        drop_items: [gunpowder]
+        spawn_reserve_multiplier: 2.0
+      cave_spider:
+        entity_type: cave_spider
+        display_name: Cave Spider
+        target_range: [1, 2]
+        difficulty_weight: 1.1
+        drop_items: [string, spider_eye]
+        spawn_reserve_multiplier: 2.0
+      witch:
+        entity_type: witch
+        display_name: Witch
+        target_range: [1, 2]
+        difficulty_weight: 1.5
+        drop_items: [glass_bottle, glowstone_dust, redstone, sugar, spider_eye, gunpowder, stick]
+        spawn_reserve_multiplier: 2.0
+      enderman:
+        entity_type: enderman
+        display_name: Enderman
+        target_range: [1, 2]
+        difficulty_weight: 1.5
+        drop_items: [ender_pearl]
+        spawn_reserve_multiplier: 2.0

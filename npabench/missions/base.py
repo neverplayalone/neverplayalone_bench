@@ -2,13 +2,22 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 from mcrcon import MCRcon
 from pydantic import BaseModel, Field, field_validator
 
 from npabench.config import DEFAULT_AGENT_USERNAME, DEFAULT_MINECRAFT_VERSION
 from npabench.evaluation.run_trace import AgentRunTrace
+
+if TYPE_CHECKING:
+    from npabench.evaluation.run_slot import ServerEndpoint
+
+
+class MissionRuntime(Protocol):
+    """Optional benchmark-owned work that runs while an agent is connected."""
+
+    def stop(self) -> dict[str, Any]: ...
 
 
 class StartingItem(BaseModel):
@@ -127,6 +136,15 @@ class Mission(ABC):
 
     @abstractmethod
     def setup_agent(self, rcon: MCRcon, mission_config: MissionConfig) -> Any: ...
+
+    def start_runtime(
+        self,
+        server_endpoint: ServerEndpoint,
+        mission_config: MissionConfig,
+        setup_state: Any,
+    ) -> MissionRuntime | None:
+        """Start optional timed mission behavior after the agent emits ``ready``."""
+        return None
 
     @abstractmethod
     def prompt_text(self, mission_config: MissionConfig) -> str: ...

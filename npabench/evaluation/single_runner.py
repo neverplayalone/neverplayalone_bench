@@ -22,7 +22,7 @@ from npabench.evaluation.run_slot import AgentRunSlot, ServerEndpoint
 from npabench.evaluation.run_trace import AgentRunTrace, TraceEvent
 from npabench.minecraft.rcon_client import rcon_session
 from npabench.minecraft.server_probe import wait_for_ready
-from npabench.missions.base import Mission, MissionConfig
+from npabench.missions.base import Mission, MissionConfig, MissionRuntime
 from npabench.recording.recorder import (
     Recorder,
     RecordingOptions,
@@ -42,6 +42,8 @@ class _AgentPhaseState:
     setup_done: bool = False
     timed_out: bool = False
     setup_state: Any = None
+    runtime_controller: MissionRuntime | None = None
+    runtime_report: dict[str, Any] | None = None
     status: str = "ok"
 
 
@@ -122,6 +124,7 @@ def run_single_evaluation(
         finally:
             agent_run_trace.ended_at = time.time()
             agent_run_trace.timed_out = phase.timed_out
+            phase.runtime_report = _stop_mission_runtime(phase, agent_run_trace)
             if movement_monitor is not None:
                 movement_report = movement_monitor.stop()
                 if movement_report.get("violated"):
@@ -143,6 +146,8 @@ def run_single_evaluation(
                 phase,
                 agent_run_trace,
             )
+            if final_snapshot is not None and phase.runtime_report is not None:
+                final_snapshot["runtime"] = phase.runtime_report
             agent.stop()
             _stop_recorder_and_export(recorder, agent_run_trace)
 
@@ -370,6 +375,27 @@ def _setup_agent_after_ready(
             rcon.command(f"tp {recorder_username} {mission_config.username}")
             rcon.command(f"spectate {mission_config.username} {recorder_username}")
     phase.setup_done = True
+    phase.runtime_controller = mission.start_runtime(
+        server_endpoint,
+        mission_config,
+        phase.setup_state,
+    )
+
+
+def _stop_mission_runtime(
+    phase: _AgentPhaseState,
+    agent_run_trace: AgentRunTrace,
+) -> dict[str, Any] | None:
+    controller = phase.runtime_controller
+    if controller is None:
+        return None
+    try:
+        report = controller.stop()
+    except Exception as exc:  # noqa: BLE001 - preserve final-state capture on cleanup failure
+        report = {"status": "error", "error": f"mission runtime stop failed: {exc}"}
+    if report.get("status") == "error":
+        agent_run_trace.append(TraceEvent(kind="error", data={"mission_runtime": report}))
+    return report
 
 
 def _capture_final_state(
