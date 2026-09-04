@@ -6,17 +6,21 @@ world_type: normal
 generate_structures: true
 difficulty: normal
 memory: 2G
-duration_seconds: 840
+duration_seconds: 900
 world_size: 5000
 spawn_time: 1000
 username: npabench_agent
 
 phase:
   preparation_seconds: 480
-  combat_seconds: 360
+  combat_seconds: 420
   wave_offsets_seconds: [0, 90, 180, 270]
   warning_offsets_seconds: [60, 10]
   spawn_mobs_naturally: true
+
+scoring:
+  death_penalty_points: 5.0
+  maximum_death_penalty: 25.0
 
 tier_rules:
   easy: {points: 20.0, target_kinds: 1, target_difficulty_units: 7.0, count_choice_slack: 1.0}

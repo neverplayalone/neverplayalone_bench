@@ -68,11 +68,19 @@ def score_combat_run(
             }
         )
 
+    kill_score = min(100.0, total_score)
+    deaths = max(0, int(final_snapshot.get("deaths", 0) or 0))
+    death_penalty = min(
+        deaths * mission_config.scoring.death_penalty_points,
+        mission_config.scoring.maximum_death_penalty,
+    )
+    final_score = max(0.0, kill_score - death_penalty)
+
     runtime = final_snapshot.get("runtime")
     spawned = agent_run_trace.agent_ready_at is not None
     runtime_failed = isinstance(runtime, dict) and runtime.get("status") == "error"
     if runtime_failed or not spawned:
-        total_score = 0.0
+        final_score = 0.0
     status = "error" if runtime_failed else ("ok" if spawned else "agent_never_spawned")
     play_start = agent_run_trace.agent_ready_at or agent_run_trace.started_at
     elapsed = max(0.0, (agent_run_trace.ended_at or time.time()) - play_start)
@@ -80,7 +88,7 @@ def score_combat_run(
         "task_id": mission_config.id,
         "agent": agent_run_trace.agent_name,
         "seed": mission_config.seed,
-        "score": min(100.0, total_score),
+        "score": final_score,
         "max_score": 100.0,
         "spawned": spawned,
         "status": status,
@@ -93,7 +101,11 @@ def score_combat_run(
         "elapsed_seconds": elapsed,
         "timed_out": agent_run_trace.timed_out,
         "alive": bool(final_snapshot.get("alive", False)),
-        "deaths": int(final_snapshot.get("deaths", 0) or 0),
+        "kill_score": kill_score,
+        "deaths": deaths,
+        "death_penalty": death_penalty,
+        "death_penalty_points": mission_config.scoring.death_penalty_points,
+        "maximum_death_penalty": mission_config.scoring.maximum_death_penalty,
         "final_position": agent_run_trace.final_state.position,
         "runtime": runtime,
         "error": (runtime.get("errors") or runtime.get("error")) if runtime_failed else None,

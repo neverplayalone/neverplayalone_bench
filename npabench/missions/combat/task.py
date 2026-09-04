@@ -52,6 +52,8 @@ class CombatTask(Task):
     waves: list[CombatWave] = Field(default_factory=list)
     preparation_seconds: int
     combat_seconds: int
+    death_penalty_points: float
+    maximum_death_penalty: float
 
 
 def generate_task(
@@ -74,6 +76,8 @@ def generate_task(
         waves=waves,
         preparation_seconds=base_config.phase.preparation_seconds,
         combat_seconds=base_config.phase.combat_seconds,
+        death_penalty_points=base_config.scoring.death_penalty_points,
+        maximum_death_penalty=base_config.scoring.maximum_death_penalty,
     )
 
 

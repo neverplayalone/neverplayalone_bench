@@ -67,6 +67,10 @@ class CombatMission(Mission):
                 "prompt": combat_task.prompt,
                 "targets": [target.model_dump() for target in target_specs(combat_task.targets)],
                 "waves": [wave.model_dump() for wave in combat_task.waves],
+                "scoring": {
+                    "death_penalty_points": combat_task.death_penalty_points,
+                    "maximum_death_penalty": combat_task.maximum_death_penalty,
+                },
             }
         )
         return CombatMissionConfig.model_validate(mission_data)

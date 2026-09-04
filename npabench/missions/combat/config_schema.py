@@ -101,7 +101,7 @@ def default_tier_rules() -> dict[Tier, TierRule]:
 
 class PhaseRules(BaseModel):
     preparation_seconds: int = 480
-    combat_seconds: int = 360
+    combat_seconds: int = 420
     wave_offsets_seconds: list[int] = Field(default_factory=lambda: [0, 90, 180, 270])
     warning_offsets_seconds: list[int] = Field(default_factory=lambda: [60, 10])
     spawn_mobs_naturally: bool = True
@@ -134,6 +134,18 @@ class PhaseRules(BaseModel):
         if any(value >= self.preparation_seconds for value in self.warning_offsets_seconds):
             raise ValueError("warning offsets must be shorter than preparation_seconds")
         return self
+
+
+class CombatScoringRules(BaseModel):
+    death_penalty_points: float = 5.0
+    maximum_death_penalty: float = 25.0
+
+    @field_validator("death_penalty_points", "maximum_death_penalty")
+    @classmethod
+    def penalties_must_be_non_negative(cls, value: float) -> float:
+        if value < 0:
+            raise ValueError("combat death penalties must be non-negative")
+        return value
 
 
 class CombatTargetSpec(BaseModel):
@@ -207,9 +219,10 @@ class CombatWave(BaseModel):
 
 class CombatMissionConfig(MissionConfig):
     id: str = "combat"
-    duration_seconds: int = 840
+    duration_seconds: int = 900
     difficulty: Literal["easy", "normal", "hard"] = "normal"
     phase: PhaseRules = Field(default_factory=PhaseRules)
+    scoring: CombatScoringRules = Field(default_factory=CombatScoringRules)
     tier_rules: dict[Tier, TierRule] = Field(default_factory=default_tier_rules)
     menu: dict[Tier, TierMenu] | None = None
     targets: list[CombatTargetSpec] = Field(default_factory=list)

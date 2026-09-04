@@ -80,9 +80,11 @@ def test_combat_is_registered() -> None:
 def test_default_config_has_two_phases_and_exact_tier_points() -> None:
     _, config = mission_and_config()
     assert config.id == "combat"
-    assert config.duration_seconds == 840
+    assert config.duration_seconds == 900
     assert config.phase.preparation_seconds == 480
-    assert config.phase.combat_seconds == 360
+    assert config.phase.combat_seconds == 420
+    assert config.scoring.death_penalty_points == 5.0
+    assert config.scoring.maximum_death_penalty == 25.0
     assert config.duration_seconds == (
         config.phase.preparation_seconds + config.phase.combat_seconds
     )
@@ -180,9 +182,11 @@ def test_prompt_explains_phases_targets_and_score() -> None:
     task, _ = built_config()
     prompt = fallback_prompt(task)
     assert "first 8 minutes" in prompt
-    assert "lasts 6 minutes" in prompt
+    assert "lasts 7 minutes" in prompt
     assert "exactly 100 points" in prompt
     assert "crafting itself gives no points" in prompt
+    assert "Each death subtracts 5 points" in prompt
+    assert "maximum death penalty of 25 points" in prompt
     for target in task.targets:
         assert target.display_name in prompt
         assert str(target.target_count) in prompt
@@ -249,7 +253,7 @@ def test_partial_kills_are_linear_and_overproduction_is_capped() -> None:
     assert capped["score"] == pytest.approx(20.0)
 
 
-def test_non_target_drops_death_and_distance_do_not_change_kill_score() -> None:
+def test_non_target_drops_and_distance_do_not_change_kill_score() -> None:
     _, config = built_config()
     target = config.targets[0]
     kills = {target.key: target.target_count}
@@ -259,12 +263,42 @@ def test_non_target_drops_death_and_distance_do_not_change_kill_score() -> None:
         {
             "kills": kills,
             "drops": {"diamond": 64},
-            "deaths": 7,
+            "deaths": 0,
             "alive": False,
             "distance_from_spawn": 10000,
         },
     )
     assert report["score"] == pytest.approx(config.tier_rules[target.tier].points)
+
+
+@pytest.mark.parametrize(
+    ("deaths", "expected_penalty", "expected_score"),
+    [(0, 0.0, 100.0), (1, 5.0, 95.0), (2, 10.0, 90.0), (5, 25.0, 75.0), (7, 25.0, 75.0)],
+)
+def test_death_penalty_is_five_points_and_capped_at_25(
+    deaths: int,
+    expected_penalty: float,
+    expected_score: float,
+) -> None:
+    _, config = built_config()
+    kills = {target.key: target.target_count for target in config.targets}
+    report = score_combat_run(config, trace_for(config), {"kills": kills, "deaths": deaths})
+    assert report["kill_score"] == pytest.approx(100.0)
+    assert report["death_penalty"] == pytest.approx(expected_penalty)
+    assert report["score"] == pytest.approx(expected_score)
+
+
+def test_death_penalty_cannot_make_score_negative() -> None:
+    _, config = built_config()
+    easy = next(target for target in config.targets if target.tier == "easy")
+    report = score_combat_run(
+        config,
+        trace_for(config),
+        {"kills": {easy.key: easy.target_count}, "deaths": 5},
+    )
+    assert report["kill_score"] == pytest.approx(20.0)
+    assert report["death_penalty"] == pytest.approx(25.0)
+    assert report["score"] == 0.0
 
 
 def test_runtime_error_fails_closed() -> None:
