@@ -103,8 +103,16 @@ class PhaseRules(BaseModel):
     preparation_seconds: int = 480
     combat_seconds: int = 420
     wave_offsets_seconds: list[int] = Field(default_factory=lambda: [0, 90, 180, 270])
+    wave_tiers: list[list[Tier]] = Field(
+        default_factory=lambda: [
+            ["easy"],
+            ["easy", "medium"],
+            ["medium", "hard"],
+            ["hard"],
+        ]
+    )
     warning_offsets_seconds: list[int] = Field(default_factory=lambda: [60, 10])
-    spawn_mobs_naturally: bool = True
+    spawn_mobs_naturally: bool = False
 
     @field_validator("preparation_seconds", "combat_seconds")
     @classmethod
@@ -118,7 +126,9 @@ class PhaseRules(BaseModel):
     def waves_must_fit_combat(cls, values: list[int]) -> list[int]:
         if not values or any(value < 0 for value in values):
             raise ValueError("wave offsets must be non-negative and non-empty")
-        return sorted(set(values))
+        if values != sorted(set(values)):
+            raise ValueError("wave offsets must be unique and strictly increasing")
+        return values
 
     @field_validator("warning_offsets_seconds")
     @classmethod
@@ -131,6 +141,15 @@ class PhaseRules(BaseModel):
     def validate_schedule(self) -> PhaseRules:
         if self.wave_offsets_seconds[-1] >= self.combat_seconds:
             raise ValueError("every wave offset must occur before combat ends")
+        if len(self.wave_tiers) != len(self.wave_offsets_seconds):
+            raise ValueError("wave_tiers must contain one entry per wave offset")
+        if any(not tiers for tiers in self.wave_tiers):
+            raise ValueError("every wave must contain at least one target tier")
+        missing_tiers = [
+            tier for tier in TIER_ORDER if not any(tier in tiers for tiers in self.wave_tiers)
+        ]
+        if missing_tiers:
+            raise ValueError(f"wave schedule is missing tiers: {', '.join(missing_tiers)}")
         if any(value >= self.preparation_seconds for value in self.warning_offsets_seconds):
             raise ValueError("warning offsets must be shorter than preparation_seconds")
         return self
@@ -221,6 +240,7 @@ class CombatMissionConfig(MissionConfig):
     id: str = "combat"
     duration_seconds: int = 900
     difficulty: Literal["easy", "normal", "hard"] = "normal"
+    keep_inventory: bool = True
     phase: PhaseRules = Field(default_factory=PhaseRules)
     scoring: CombatScoringRules = Field(default_factory=CombatScoringRules)
     tier_rules: dict[Tier, TierRule] = Field(default_factory=default_tier_rules)

@@ -9,7 +9,7 @@ from npabench.evaluation.run_slot import ServerEndpoint
 from npabench.evaluation.run_trace import AgentRunTrace, FinalAgentState
 from npabench.missions.combat import CombatMission
 from npabench.missions.combat.config_schema import TIER_ORDER, CombatMissionConfig
-from npabench.missions.combat.environment import setup_combat_agent
+from npabench.missions.combat.environment import configure_combat_world, setup_combat_agent
 from npabench.missions.combat.final_state import collect_combat_state
 from npabench.missions.combat.prompting import PROMPT_SCHEMA_VERSION, fallback_prompt
 from npabench.missions.combat.scoring import score_combat_run
@@ -83,6 +83,14 @@ def test_default_config_has_two_phases_and_exact_tier_points() -> None:
     assert config.duration_seconds == 900
     assert config.phase.preparation_seconds == 480
     assert config.phase.combat_seconds == 420
+    assert config.keep_inventory is True
+    assert config.phase.spawn_mobs_naturally is False
+    assert config.phase.wave_tiers == [
+        ["easy"],
+        ["easy", "medium"],
+        ["medium", "hard"],
+        ["hard"],
+    ]
     assert config.scoring.death_penalty_points == 5.0
     assert config.scoring.maximum_death_penalty == 25.0
     assert config.duration_seconds == (
@@ -107,6 +115,10 @@ def test_mob_catalog_matches_approved_tiers() -> None:
         "witch",
         "enderman",
     }
+    assert {
+        tier: {entry.spawn_reserve_multiplier for entry in config.menu[tier].mobs.values()}
+        for tier in TIER_ORDER
+    } == {"easy": {1.25}, "medium": {1.5}, "hard": {1.5}}
 
 
 def test_task_generation_is_deterministic_and_varies_by_seed() -> None:
@@ -163,6 +175,12 @@ def test_waves_spawn_each_targets_reserve_count_and_are_stable() -> None:
     for target in task.targets:
         assert spawned[target.key] == target.spawn_count
         assert target.spawn_count > target.target_count
+    assert [{spawn.tier for spawn in wave.spawns} for wave in task.waves] == [
+        {"easy"},
+        {"easy", "medium"},
+        {"medium", "hard"},
+        {"hard"},
+    ]
     assert task.waves == generate_task(config, 9).waves
 
 
@@ -174,6 +192,8 @@ def test_build_config_removes_menu_and_preserves_task() -> None:
     assert config.seed == task.minecraft_seed
     assert config.biome is None
     assert config.menu is None
+    assert config.keep_inventory is True
+    assert config.phase.spawn_mobs_naturally is False
     assert [target.key for target in config.targets] == [target.key for target in task.targets]
     assert config.waves == task.waves
 
@@ -187,6 +207,8 @@ def test_prompt_explains_phases_targets_and_score() -> None:
     assert "crafting itself gives no points" in prompt
     assert "Each death subtracts 5 points" in prompt
     assert "maximum death penalty of 25 points" in prompt
+    assert "Natural hostile spawning stays disabled" in prompt
+    assert "You keep your inventory after death" in prompt
     for target in task.targets:
         assert target.display_name in prompt
         assert str(target.target_count) in prompt
@@ -203,6 +225,14 @@ def test_setup_starts_empty_disables_prep_mobs_and_tracks_kills() -> None:
     for target in config.targets:
         criterion = f"minecraft.killed:minecraft.{target.entity_type}"
         assert any(criterion in command for command in rcon.commands)
+
+
+def test_world_keeps_inventory_and_disables_natural_spawning() -> None:
+    _, config = built_config()
+    rcon = FakeRcon()
+    configure_combat_world(rcon, config)
+    assert "gamerule keep_inventory true" in rcon.commands
+    assert "gamerule spawn_mobs false" in rcon.commands
 
 
 def test_final_state_reads_kill_deltas_and_drops() -> None:
@@ -335,7 +365,7 @@ def test_spawn_command_uses_player_relative_safe_position_and_tags() -> None:
     assert "positioned over motion_blocking_no_leaves" in rcon.commands[1]
 
 
-def test_controller_combat_transition_enables_natural_mobs(monkeypatch) -> None:
+def test_controller_combat_transition_keeps_natural_mobs_disabled(monkeypatch) -> None:
     _, config = built_config()
     rcon = FakeRcon()
 
@@ -347,7 +377,7 @@ def test_controller_combat_transition_enables_natural_mobs(monkeypatch) -> None:
     controller = CombatWaveController(ServerEndpoint(), config)
     controller._begin_combat()
     assert "time set midnight" in rcon.commands
-    assert "gamerule spawn_mobs true" in rcon.commands
+    assert "gamerule spawn_mobs false" in rcon.commands
     assert controller.report()["status"] == "combat"
 
 

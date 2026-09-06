@@ -13,7 +13,10 @@ DEATH_OBJECTIVE = "ncb_deaths"
 
 
 def configure_combat_world(rcon: MCRcon, mission_config: CombatMissionConfig) -> None:
-    command_with_retry(rcon, "gamerule keep_inventory false")
+    command_with_retry(
+        rcon,
+        "gamerule keep_inventory " + ("true" if mission_config.keep_inventory else "false"),
+    )
     command_with_retry(rcon, "gamerule advance_time false")
     command_with_retry(rcon, "gamerule advance_weather false")
     command_with_retry(rcon, "gamerule spawn_mobs false")

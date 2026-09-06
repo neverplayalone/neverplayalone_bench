@@ -35,8 +35,13 @@ def fallback_prompt(task: CombatTask) -> str:
             "spawn during preparation, and crafting itself gives no points."
         ),
         (
-            f"Combat then lasts {task.combat_seconds // 60} minutes. Natural hostile spawning "
-            "will begin and target waves will appear near you. Only kills credited to you count."
+            f"Combat then lasts {task.combat_seconds // 60} minutes. "
+            + (
+                "Natural hostile spawning and staged target waves will begin. "
+                if task.spawn_mobs_naturally
+                else "Natural hostile spawning stays disabled; staged target waves will appear. "
+            )
+            + "Only kills credited to you count."
         ),
         "Kill these targets:",
     ]
@@ -53,6 +58,11 @@ def fallback_prompt(task: CombatTask) -> str:
             (
                 f"Each death subtracts {task.death_penalty_points:g} points, up to a maximum "
                 f"death penalty of {task.maximum_death_penalty:g} points."
+            ),
+            (
+                "You keep your inventory after death."
+                if task.keep_inventory
+                else "You lose carried inventory after death."
             ),
             "Mob drops are yours to collect but do not add separate points.",
             "Emit ready before beginning and emit done when you want the run to end.",

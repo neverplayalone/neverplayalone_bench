@@ -65,8 +65,16 @@ class CombatMission(Mission):
                 "seed": combat_task.minecraft_seed,
                 "biome": None,
                 "prompt": combat_task.prompt,
+                "duration_seconds": (combat_task.preparation_seconds + combat_task.combat_seconds),
+                "keep_inventory": combat_task.keep_inventory,
                 "targets": [target.model_dump() for target in target_specs(combat_task.targets)],
                 "waves": [wave.model_dump() for wave in combat_task.waves],
+                "phase": {
+                    **typed_base.phase.model_dump(),
+                    "preparation_seconds": combat_task.preparation_seconds,
+                    "combat_seconds": combat_task.combat_seconds,
+                    "spawn_mobs_naturally": combat_task.spawn_mobs_naturally,
+                },
                 "scoring": {
                     "death_penalty_points": combat_task.death_penalty_points,
                     "maximum_death_penalty": combat_task.maximum_death_penalty,

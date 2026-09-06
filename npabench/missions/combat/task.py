@@ -54,6 +54,8 @@ class CombatTask(Task):
     combat_seconds: int
     death_penalty_points: float
     maximum_death_penalty: float
+    keep_inventory: bool
+    spawn_mobs_naturally: bool
 
 
 def generate_task(
@@ -78,6 +80,8 @@ def generate_task(
         combat_seconds=base_config.phase.combat_seconds,
         death_penalty_points=base_config.scoring.death_penalty_points,
         maximum_death_penalty=base_config.scoring.maximum_death_penalty,
+        keep_inventory=base_config.keep_inventory,
+        spawn_mobs_naturally=base_config.phase.spawn_mobs_naturally,
     )
 
 
@@ -205,11 +209,13 @@ def build_waves(
     rng: random.Random,
 ) -> list[CombatWave]:
     wave_offsets = base_config.phase.wave_offsets_seconds
+    wave_tiers = base_config.phase.wave_tiers
     distributed: dict[int, list[tuple[CombatTaskTarget, int]]] = defaultdict(list)
     for target in targets:
-        quotient, remainder = divmod(target.spawn_count, len(wave_offsets))
-        for wave_index in range(len(wave_offsets)):
-            count = quotient + (1 if wave_index < remainder else 0)
+        eligible_waves = [index for index, tiers in enumerate(wave_tiers) if target.tier in tiers]
+        quotient, remainder = divmod(target.spawn_count, len(eligible_waves))
+        for position, wave_index in enumerate(eligible_waves):
+            count = quotient + (1 if position < remainder else 0)
             if count:
                 distributed[wave_index].append((target, count))
 
