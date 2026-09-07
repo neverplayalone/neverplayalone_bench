@@ -34,6 +34,7 @@ include = ["npabench*"]
 "npabench.missions.resource_gathering" = ["configs/*.yaml"]
 "npabench.missions.crafting_v2" = ["configs/*.yaml"]
 "npabench.missions.crafting_v3" = ["configs/*.yaml"]
+"npabench.missions.combat" = ["configs/*.yaml"]
 
 [tool.ruff]
 line-length = 100

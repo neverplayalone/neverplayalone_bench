@@ -62,7 +62,7 @@ def _mission_config_summary(config: MissionConfig) -> dict[str, Any]:
     # Missions name their resolved target list differently (crafting calls them
     # recipes), so summarise every known spelling. Anything left inline gets
     # dumped in full into the round log.
-    targets = data.pop("resources", []) + data.pop("recipes", [])
+    targets = data.pop("resources", []) + data.pop("recipes", []) + data.pop("targets", [])
     scoring = data.pop("scoring", None)
     menu = data.pop("menu", None)
     data["prompt_chars"] = len(prompt)

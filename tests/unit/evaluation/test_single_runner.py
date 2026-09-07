@@ -79,6 +79,64 @@ def test_run_single_evaluation_writes_artifacts(
     assert written["task_prompt"] == "collect one log"
 
 
+def test_run_single_evaluation_starts_and_stops_mission_runtime(
+    monkeypatch,
+    tmp_path,
+    fake_agent,
+    fake_mission,
+    fake_rcon_session,
+) -> None:
+    class FakeRuntime:
+        def __init__(self) -> None:
+            self.stopped = False
+
+        def stop(self) -> dict:
+            self.stopped = True
+            return {"status": "stopped"}
+
+    runtime = FakeRuntime()
+    agent_spec = AgentSpec(name="fake_agent", path=tmp_path / "agent")
+    agent_spec.path.mkdir()
+    mission_config = MissionConfig(id="fake-task", seed=42, duration_seconds=30)
+    agent_run_slot = AgentRunSlot.allocate(slot_id=2, data_root=tmp_path / "slot")
+
+    monkeypatch.setattr("npabench.evaluation.single_runner.create_agent", lambda *args, **kwargs: fake_agent)
+    monkeypatch.setattr("npabench.evaluation.single_runner.start_agent_run_slot", lambda *args, **kwargs: None)
+    monkeypatch.setattr("npabench.evaluation.single_runner.stop_agent_run_slot", lambda *args, **kwargs: None)
+    monkeypatch.setattr("npabench.evaluation.single_runner.cleanup_run_worlds", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        "npabench.evaluation.single_runner._wait_for_slot_ready",
+        lambda slot: ServerEndpoint(
+            host=slot.host,
+            game_port=slot.game_port,
+            rcon_port=slot.rcon_port,
+            rcon_password=slot.rcon_password,
+        ),
+    )
+    monkeypatch.setattr("npabench.evaluation.single_runner.rcon_session", fake_rcon_session)
+    monkeypatch.setattr(fake_mission, "start_runtime", lambda *args, **kwargs: runtime)
+    original_collect = fake_mission.collect_final_state
+
+    def collect_after_runtime_stop(*args, **kwargs):
+        assert runtime.stopped is True
+        return original_collect(*args, **kwargs)
+
+    monkeypatch.setattr(fake_mission, "collect_final_state", collect_after_runtime_stop)
+
+    run_single_evaluation(
+        fake_mission,
+        mission_config,
+        agent_run_slot,
+        agent_spec,
+        reference_world_dir=tmp_path / "reference_world",
+        recording=False,
+        agent_mode=AgentMode.HOST,
+        output_dir=tmp_path / "run",
+    )
+
+    assert runtime.stopped is True
+
+
 def test_run_single_evaluation_prefers_ranking_score_when_present(
     monkeypatch,
     tmp_path,
@@ -91,11 +149,19 @@ def test_run_single_evaluation_prefers_ranking_score_when_present(
     mission_config = MissionConfig(id="fake-task", seed=42, duration_seconds=30)
     agent_run_slot = AgentRunSlot.allocate(slot_id=2, data_root=tmp_path / "slot")
 
-    monkeypatch.setattr("npabench.evaluation.single_runner.create_agent", lambda *args, **kwargs: fake_agent)
+    monkeypatch.setattr(
+        "npabench.evaluation.single_runner.create_agent", lambda *args, **kwargs: fake_agent
+    )
     monkeypatch.setattr("npabench.evaluation.single_runner.ensure_agent_image", lambda: "image")
-    monkeypatch.setattr("npabench.evaluation.single_runner.start_agent_run_slot", lambda *args, **kwargs: None)
-    monkeypatch.setattr("npabench.evaluation.single_runner.stop_agent_run_slot", lambda *args, **kwargs: None)
-    monkeypatch.setattr("npabench.evaluation.single_runner.cleanup_run_worlds", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        "npabench.evaluation.single_runner.start_agent_run_slot", lambda *args, **kwargs: None
+    )
+    monkeypatch.setattr(
+        "npabench.evaluation.single_runner.stop_agent_run_slot", lambda *args, **kwargs: None
+    )
+    monkeypatch.setattr(
+        "npabench.evaluation.single_runner.cleanup_run_worlds", lambda *args, **kwargs: None
+    )
     monkeypatch.setattr(
         "npabench.evaluation.single_runner._wait_for_slot_ready",
         lambda slot: ServerEndpoint(
