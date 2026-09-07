@@ -56,8 +56,8 @@ def fallback_prompt(task: CombatTask) -> str:
             "Each tier awards linear partial credit based on its weighted completed kill count.",
             "All three tiers total exactly 100 points. Extra and non-target kills give no points.",
             (
-                f"Each death subtracts {task.death_penalty_points:g} points, up to a maximum "
-                f"death penalty of {task.maximum_death_penalty:g} points."
+                f"Each death subtracts {task.death_penalty_points:g} points. "
+                "Death penalties continue until your score reaches zero."
             ),
             (
                 "You keep your inventory after death."

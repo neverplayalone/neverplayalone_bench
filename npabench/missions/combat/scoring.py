@@ -70,11 +70,8 @@ def score_combat_run(
 
     kill_score = min(100.0, total_score)
     deaths = max(0, int(final_snapshot.get("deaths", 0) or 0))
-    death_penalty = min(
-        deaths * mission_config.scoring.death_penalty_points,
-        mission_config.scoring.maximum_death_penalty,
-    )
-    final_score = max(0.0, kill_score - death_penalty)
+    death_penalty = min(kill_score, deaths * mission_config.scoring.death_penalty_points)
+    final_score = kill_score - death_penalty
 
     runtime = final_snapshot.get("runtime")
     spawned = agent_run_trace.agent_ready_at is not None
@@ -105,7 +102,6 @@ def score_combat_run(
         "deaths": deaths,
         "death_penalty": death_penalty,
         "death_penalty_points": mission_config.scoring.death_penalty_points,
-        "maximum_death_penalty": mission_config.scoring.maximum_death_penalty,
         "final_position": agent_run_trace.final_state.position,
         "runtime": runtime,
         "error": (runtime.get("errors") or runtime.get("error")) if runtime_failed else None,

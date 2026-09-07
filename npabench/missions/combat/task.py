@@ -53,7 +53,6 @@ class CombatTask(Task):
     preparation_seconds: int
     combat_seconds: int
     death_penalty_points: float
-    maximum_death_penalty: float
     keep_inventory: bool
     spawn_mobs_naturally: bool
 
@@ -79,7 +78,6 @@ def generate_task(
         preparation_seconds=base_config.phase.preparation_seconds,
         combat_seconds=base_config.phase.combat_seconds,
         death_penalty_points=base_config.scoring.death_penalty_points,
-        maximum_death_penalty=base_config.scoring.maximum_death_penalty,
         keep_inventory=base_config.keep_inventory,
         spawn_mobs_naturally=base_config.phase.spawn_mobs_naturally,
     )

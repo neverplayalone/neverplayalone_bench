@@ -91,8 +91,7 @@ def test_default_config_has_two_phases_and_exact_tier_points() -> None:
         ["medium", "hard"],
         ["hard"],
     ]
-    assert config.scoring.death_penalty_points == 5.0
-    assert config.scoring.maximum_death_penalty == 25.0
+    assert config.scoring.death_penalty_points == 10.0
     assert config.duration_seconds == (
         config.phase.preparation_seconds + config.phase.combat_seconds
     )
@@ -205,8 +204,8 @@ def test_prompt_explains_phases_targets_and_score() -> None:
     assert "lasts 7 minutes" in prompt
     assert "exactly 100 points" in prompt
     assert "crafting itself gives no points" in prompt
-    assert "Each death subtracts 5 points" in prompt
-    assert "maximum death penalty of 25 points" in prompt
+    assert "Each death subtracts 10 points" in prompt
+    assert "until your score reaches zero" in prompt
     assert "Natural hostile spawning stays disabled" in prompt
     assert "You keep your inventory after death" in prompt
     for target in task.targets:
@@ -303,9 +302,16 @@ def test_non_target_drops_and_distance_do_not_change_kill_score() -> None:
 
 @pytest.mark.parametrize(
     ("deaths", "expected_penalty", "expected_score"),
-    [(0, 0.0, 100.0), (1, 5.0, 95.0), (2, 10.0, 90.0), (5, 25.0, 75.0), (7, 25.0, 75.0)],
+    [
+        (0, 0.0, 100.0),
+        (1, 10.0, 90.0),
+        (2, 20.0, 80.0),
+        (5, 50.0, 50.0),
+        (10, 100.0, 0.0),
+        (12, 100.0, 0.0),
+    ],
 )
-def test_death_penalty_is_five_points_and_capped_at_25(
+def test_death_penalty_is_ten_points_until_score_reaches_zero(
     deaths: int,
     expected_penalty: float,
     expected_score: float,
@@ -327,7 +333,7 @@ def test_death_penalty_cannot_make_score_negative() -> None:
         {"kills": {easy.key: easy.target_count}, "deaths": 5},
     )
     assert report["kill_score"] == pytest.approx(20.0)
-    assert report["death_penalty"] == pytest.approx(25.0)
+    assert report["death_penalty"] == pytest.approx(20.0)
     assert report["score"] == 0.0
 
 

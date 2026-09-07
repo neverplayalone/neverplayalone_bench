@@ -77,7 +77,6 @@ class CombatMission(Mission):
                 },
                 "scoring": {
                     "death_penalty_points": combat_task.death_penalty_points,
-                    "maximum_death_penalty": combat_task.maximum_death_penalty,
                 },
             }
         )

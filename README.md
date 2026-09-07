@@ -9,8 +9,8 @@ The `combat` mission starts the agent empty and provides eight minutes to
 gather and craft equipment, followed by seven minutes of staged, deterministic
 target waves. Each seed selects one Easy, two Medium, and two Hard mob targets.
 The tiers are worth 20, 35, and 45 points, respectively, for an exact maximum
-score of 100. Inventory is retained after death, but each death deducts five
-points, capped at a maximum 25-point penalty.
+score of 100. Inventory is retained after death, but each death deducts ten
+points until the score reaches zero.
 
 ## Quick Start
 

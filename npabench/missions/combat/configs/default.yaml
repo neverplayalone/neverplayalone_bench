@@ -25,8 +25,7 @@ phase:
   spawn_mobs_naturally: false
 
 scoring:
-  death_penalty_points: 5.0
-  maximum_death_penalty: 25.0
+  death_penalty_points: 10.0
 
 tier_rules:
   easy: {points: 20.0, target_kinds: 1, target_difficulty_units: 7.0, count_choice_slack: 1.0}

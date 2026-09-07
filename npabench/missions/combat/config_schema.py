@@ -156,10 +156,9 @@ class PhaseRules(BaseModel):
 
 
 class CombatScoringRules(BaseModel):
-    death_penalty_points: float = 5.0
-    maximum_death_penalty: float = 25.0
+    death_penalty_points: float = 10.0
 
-    @field_validator("death_penalty_points", "maximum_death_penalty")
+    @field_validator("death_penalty_points")
     @classmethod
     def penalties_must_be_non_negative(cls, value: float) -> float:
         if value < 0:
