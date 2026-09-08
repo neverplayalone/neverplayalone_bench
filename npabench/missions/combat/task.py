@@ -52,6 +52,7 @@ class CombatTask(Task):
     waves: list[CombatWave] = Field(default_factory=list)
     preparation_seconds: int
     combat_seconds: int
+    max_active_mobs: int = Field(default=3, gt=0, strict=True)
     death_penalty_points: float
     keep_inventory: bool
     spawn_mobs_naturally: bool
@@ -67,7 +68,7 @@ def generate_task(
     rng = random.Random(seed)
     targets = resolve_task_targets(base_config, rng)
     waves = build_waves(base_config, targets, rng)
-    minecraft_seed = rng.getrandbits(64)
+    minecraft_seed = random.Random(f"combat-world:{seed}").getrandbits(64)
     selected_id = task_id or build_task_id(seed, targets)
     return CombatTask(
         task_id=selected_id,
@@ -77,6 +78,7 @@ def generate_task(
         waves=waves,
         preparation_seconds=base_config.phase.preparation_seconds,
         combat_seconds=base_config.phase.combat_seconds,
+        max_active_mobs=base_config.phase.max_active_mobs,
         death_penalty_points=base_config.scoring.death_penalty_points,
         keep_inventory=base_config.keep_inventory,
         spawn_mobs_naturally=base_config.phase.spawn_mobs_naturally,

@@ -3,10 +3,18 @@ from __future__ import annotations
 from pathlib import Path
 
 from npabench.missions.base import PromptMetadata
-from npabench.missions.combat.config_schema import TIER_ORDER
 from npabench.missions.combat.task import CombatTask
 
-PROMPT_SCHEMA_VERSION = "combat.v1"
+PROMPT_SCHEMA_VERSION = "combat.v5"
+
+PROMPT_TEMPLATES = (
+    "Prepare your gear, then face the incoming waves and kill {targets}. "
+    "Adapt to each wave and stay alive until the mission ends.",
+    "Gather resources and craft your combat gear, then kill {targets} as enemy waves arrive. "
+    "Adapt to each wave and stay alive until the mission ends.",
+    "Get equipped for battle, then kill {targets} as enemy waves arrive. "
+    "Adapt to each wave and stay alive until the mission ends.",
+)
 
 
 def materialize_task_prompt(task: CombatTask, output_dir: Path) -> CombatTask:
@@ -24,48 +32,16 @@ def materialize_task_prompt(task: CombatTask, output_dir: Path) -> CombatTask:
 
 
 def fallback_prompt(task: CombatTask) -> str:
-    by_tier = {
-        tier: [target for target in task.targets if target.tier == tier] for tier in TIER_ORDER
-    }
-    lines = [
-        "You start with an empty inventory.",
-        (
-            f"Use the first {task.preparation_seconds // 60} minutes to gather materials and "
-            "craft your own weapons, armor, shield, food, and defenses. Hostile mobs do not "
-            "spawn during preparation, and crafting itself gives no points."
-        ),
-        (
-            f"Combat then lasts {task.combat_seconds // 60} minutes. "
-            + (
-                "Natural hostile spawning and staged target waves will begin. "
-                if task.spawn_mobs_naturally
-                else "Natural hostile spawning stays disabled; staged target waves will appear. "
-            )
-            + "Only kills credited to you count."
-        ),
-        "Kill these targets:",
-    ]
-    tier_points = {"easy": 20, "medium": 35, "hard": 45}
-    for tier in TIER_ORDER:
-        descriptions = ", ".join(
-            f"{target.target_count} {target.display_name}" for target in by_tier[tier]
-        )
-        lines.append(f"- {tier.title()} ({tier_points[tier]} points): {descriptions}")
-    lines.extend(
-        [
-            "Each tier awards linear partial credit based on its weighted completed kill count.",
-            "All three tiers total exactly 100 points. Extra and non-target kills give no points.",
-            (
-                f"Each death subtracts {task.death_penalty_points:g} points. "
-                "Death penalties continue until your score reaches zero."
-            ),
-            (
-                "You keep your inventory after death."
-                if task.keep_inventory
-                else "You lose carried inventory after death."
-            ),
-            "Mob drops are yours to collect but do not add separate points.",
-            "Emit ready before beginning and emit done when you want the run to end.",
-        ]
-    )
-    return "\n".join(lines)
+    parts = []
+    plurals = {"Drowned": "Drowned", "Witch": "Witches", "Enderman": "Endermen"}
+    for target in task.targets:
+        name = target.display_name
+        if target.target_count != 1:
+            name = plurals.get(name, f"{name}s")
+        parts.append(f"{target.target_count} {name}")
+    if len(parts) > 2:
+        listed = ", ".join(parts[:-1]) + f", and {parts[-1]}"
+    else:
+        listed = " and ".join(parts) or "no mobs"
+    template = PROMPT_TEMPLATES[task.seed % len(PROMPT_TEMPLATES)]
+    return template.format(targets=listed)

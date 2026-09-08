@@ -30,12 +30,18 @@ class FakeRcon:
         self.scores = scores or {}
         self.inventory = inventory or {}
         self.summon_responses = list(summon_responses or [])
+        self.runtime_scores: dict[tuple[str, str], int] = {}
 
     def command(self, command: str) -> str:
         self.commands.append(command)
+        if command.startswith("scoreboard players set") and command.split()[4] == "ncb_live":
+            holder, objective, value = command.split()[3:6]
+            self.runtime_scores[holder, objective] = int(value)
+            return "Set score"
         if command.startswith("scoreboard players get"):
-            objective = command.rsplit(" ", 1)[-1]
-            return f"npabench_agent has {self.scores.get(objective, 0)} [{objective}]"
+            holder, objective = command.split()[3:5]
+            value = self.runtime_scores.get((holder, objective), self.scores.get(objective, 0))
+            return f"{holder} has {value} [{objective}]"
         if command.startswith("clear ") and command.endswith(" 0"):
             item = command.split()[2].removeprefix("minecraft:")
             count = self.inventory.get(item, 0)
@@ -47,7 +53,11 @@ class FakeRcon:
         if command.endswith(" foodLevel"):
             return "18"
         if "summon minecraft:" in command:
-            return self.summon_responses.pop(0) if self.summon_responses else "Summoned new mob"
+            response = self.summon_responses.pop(0) if self.summon_responses else "Summoned new mob"
+            if command.startswith("execute store success score"):
+                holder, objective = command.split()[4:6]
+                self.runtime_scores[holder, objective] = int("Summoned" in response)
+            return response
         return ""
 
 
@@ -80,15 +90,20 @@ def test_combat_is_registered() -> None:
 def test_default_config_has_two_phases_and_exact_tier_points() -> None:
     _, config = mission_and_config()
     assert config.id == "combat"
-    assert config.duration_seconds == 900
-    assert config.phase.preparation_seconds == 480
-    assert config.phase.combat_seconds == 420
+    assert config.duration_seconds == 1080
+    assert config.phase.preparation_seconds == 600
+    assert config.phase.combat_seconds == 480
+    assert config.phase.max_active_mobs == 3
     assert config.keep_inventory is True
     assert config.phase.spawn_mobs_naturally is False
     assert config.phase.wave_tiers == [
         ["easy"],
-        ["easy", "medium"],
-        ["medium", "hard"],
+        ["easy"],
+        ["easy"],
+        ["medium"],
+        ["medium"],
+        ["medium"],
+        ["hard"],
         ["hard"],
     ]
     assert config.scoring.death_penalty_points == 10.0
@@ -96,9 +111,9 @@ def test_default_config_has_two_phases_and_exact_tier_points() -> None:
         config.phase.preparation_seconds + config.phase.combat_seconds
     )
     assert {tier: config.tier_rules[tier].points for tier in TIER_ORDER} == {
-        "easy": 20.0,
-        "medium": 35.0,
-        "hard": 45.0,
+        "easy": 30.0,
+        "medium": 40.0,
+        "hard": 30.0,
     }
     assert sum(rule.points for rule in config.tier_rules.values()) == 100.0
 
@@ -170,14 +185,18 @@ def test_waves_spawn_each_targets_reserve_count_and_are_stable() -> None:
     spawned = Counter(
         spawn.target_key for wave in task.waves for spawn in wave.spawns for _ in range(spawn.count)
     )
-    assert len(task.waves) == len(config.phase.wave_offsets_seconds) == 4
+    assert len(task.waves) == len(config.phase.wave_offsets_seconds) == 8
     for target in task.targets:
         assert spawned[target.key] == target.spawn_count
         assert target.spawn_count > target.target_count
     assert [{spawn.tier for spawn in wave.spawns} for wave in task.waves] == [
         {"easy"},
-        {"easy", "medium"},
-        {"medium", "hard"},
+        {"easy"},
+        {"easy"},
+        {"medium"},
+        {"medium"},
+        {"medium"},
+        {"hard"},
         {"hard"},
     ]
     assert task.waves == generate_task(config, 9).waves
@@ -197,21 +216,24 @@ def test_build_config_removes_menu_and_preserves_task() -> None:
     assert config.waves == task.waves
 
 
-def test_prompt_explains_phases_targets_and_score() -> None:
+def test_prompt_briefly_introduces_preparation_and_kill_objectives() -> None:
     task, _ = built_config()
     prompt = fallback_prompt(task)
-    assert "first 8 minutes" in prompt
-    assert "lasts 7 minutes" in prompt
-    assert "exactly 100 points" in prompt
-    assert "crafting itself gives no points" in prompt
-    assert "Each death subtracts 10 points" in prompt
-    assert "until your score reaches zero" in prompt
-    assert "Natural hostile spawning stays disabled" in prompt
-    assert "You keep your inventory after death" in prompt
+    assert prompt.startswith(("Prepare your gear", "Gather resources", "Get equipped for battle"))
+    assert "kill " in prompt
+    assert "waves" in prompt
+    assert "stay alive until the mission ends" in prompt
+    assert prompt.endswith(".")
+    assert "\n" not in prompt
+    assert len(prompt.split()) <= 55
     for target in task.targets:
-        assert target.display_name in prompt
-        assert str(target.target_count) in prompt
-    assert PROMPT_SCHEMA_VERSION == "combat.v1"
+        name = target.display_name
+        if target.target_count != 1:
+            name = {"Drowned": "Drowned", "Witch": "Witches", "Enderman": "Endermen"}.get(
+                name, f"{name}s"
+            )
+        assert f"{target.target_count} {name}" in prompt
+    assert PROMPT_SCHEMA_VERSION == "combat.v5"
 
 
 def test_setup_starts_empty_disables_prep_mobs_and_tracks_kills() -> None:
@@ -263,9 +285,45 @@ def test_full_kills_score_exactly_100() -> None:
     assert report["score"] == pytest.approx(100.0)
     assert report["max_score"] == 100.0
     assert {tier["tier"]: tier["score"] for tier in report["tiers"]} == pytest.approx(
-        {"easy": 20.0, "medium": 35.0, "hard": 45.0}
+        {"easy": 30.0, "medium": 40.0, "hard": 30.0}
     )
     assert sum(row["points"] for row in report["resources"]) == pytest.approx(report["score"])
+
+
+def test_easy_and_medium_completion_with_two_deaths_scores_fifty() -> None:
+    _, config = built_config()
+    kills = {
+        target.key: target.target_count
+        for target in config.targets
+        if target.tier in {"easy", "medium"}
+    }
+    report = score_combat_run(config, trace_for(config), {"kills": kills, "deaths": 2})
+    assert report["kill_score"] == pytest.approx(70)
+    assert report["death_penalty"] == pytest.approx(20)
+    assert report["score"] == pytest.approx(50)
+
+
+def test_runtime_receives_setup_kill_baselines(monkeypatch) -> None:
+    mission, _ = mission_and_config()
+    _, config = built_config()
+    setup = {"kill_baselines": {config.targets[0].key: 7}}
+    captured = {}
+
+    class Runtime:
+        def __init__(self, endpoint, mission_config, *, setup_state):
+            captured["endpoint"] = endpoint
+            captured["config"] = mission_config
+            captured["setup"] = setup_state
+
+        def start(self):
+            return self
+
+    monkeypatch.setattr("npabench.missions.combat.mission.CombatWaveController", Runtime)
+    endpoint = ServerEndpoint()
+    mission.start_runtime(endpoint, config, setup)
+    assert captured["setup"] is setup
+    assert captured["config"].phase.max_active_mobs == 3
+    assert captured["endpoint"] == endpoint
 
 
 def test_partial_kills_are_linear_and_overproduction_is_capped() -> None:
@@ -274,12 +332,12 @@ def test_partial_kills_are_linear_and_overproduction_is_capped() -> None:
     kills = {target.key: 0 for target in config.targets}
     kills[easy.key] = easy.target_count // 2
     report = score_combat_run(config, trace_for(config), {"kills": kills})
-    expected = 20.0 * (easy.target_count // 2) / easy.target_count
+    expected = 30.0 * (easy.target_count // 2) / easy.target_count
     assert report["score"] == pytest.approx(expected)
 
     kills[easy.key] = easy.target_count + 100
     capped = score_combat_run(config, trace_for(config), {"kills": kills})
-    assert capped["score"] == pytest.approx(20.0)
+    assert capped["score"] == pytest.approx(30.0)
 
 
 def test_non_target_drops_and_distance_do_not_change_kill_score() -> None:
@@ -332,8 +390,8 @@ def test_death_penalty_cannot_make_score_negative() -> None:
         trace_for(config),
         {"kills": {easy.key: easy.target_count}, "deaths": 5},
     )
-    assert report["kill_score"] == pytest.approx(20.0)
-    assert report["death_penalty"] == pytest.approx(20.0)
+    assert report["kill_score"] == pytest.approx(30.0)
+    assert report["death_penalty"] == pytest.approx(30.0)
     assert report["score"] == 0.0
 
 
@@ -363,12 +421,13 @@ def test_spawn_command_uses_player_relative_safe_position_and_tags() -> None:
     _, config = built_config()
     controller = CombatWaveController(ServerEndpoint(), config)
     spawn = config.waves[0].spawns[0]
-    rcon = FakeRcon(summon_responses=["No blocks passed", "Summoned new mob"])
+    rcon = FakeRcon(summon_responses=["", "Summoned new mob"])
     assert controller._spawn_one(rcon, spawn, *spawn.offsets[0]) is True
-    assert len(rcon.commands) == 2
-    assert f"at {config.username}" in rcon.commands[0]
-    assert "npabench_wave" in rcon.commands[0]
-    assert "positioned over motion_blocking_no_leaves" in rcon.commands[1]
+    summons = [command for command in rcon.commands if "summon minecraft:" in command]
+    assert len(summons) == 2
+    assert f"at {config.username}" in summons[0]
+    assert "npabench_wave" in summons[0]
+    assert "positioned over motion_blocking_no_leaves" in summons[1]
 
 
 def test_controller_combat_transition_keeps_natural_mobs_disabled(monkeypatch) -> None:
@@ -387,13 +446,15 @@ def test_controller_combat_transition_keeps_natural_mobs_disabled(monkeypatch) -
     assert controller.report()["status"] == "combat"
 
 
-def test_controller_fails_closed_when_completed_waves_have_spawn_shortfall() -> None:
+def test_controller_fails_closed_when_failed_summons_cause_spawn_shortfall() -> None:
     _, config = built_config()
     controller = CombatWaveController(ServerEndpoint(), config)
     controller._events = [{"kind": "wave"} for _ in config.waves]
+    controller._released_waves = {wave.index for wave in config.waves}
     controller._spawned_by_target = {target.key: target.target_count for target in config.targets}
     short_target = config.targets[0]
     controller._spawned_by_target[short_target.key] = short_target.target_count - 1
+    controller._failed_by_target[short_target.key] = 1
 
     controller._validate_spawn_guarantees()
 

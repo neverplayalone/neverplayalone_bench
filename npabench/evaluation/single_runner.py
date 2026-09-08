@@ -12,7 +12,7 @@ from rich.console import Console
 from npabench.agents import create_agent, ensure_agent_image
 from npabench.agents.base import Agent, AgentRunContext, AgentSpec
 from npabench.evaluation.craft_log import CraftAnnouncer
-from npabench.evaluation.movement_monitor import MovementMonitor
+from npabench.evaluation.movement_monitor import DEFAULT_DEATHS_OBJECTIVE, MovementMonitor
 from npabench.evaluation.reference_world import (
     cleanup_run_worlds,
     start_agent_run_slot,
@@ -23,6 +23,8 @@ from npabench.evaluation.run_trace import AgentRunTrace, TraceEvent
 from npabench.minecraft.rcon_client import rcon_session
 from npabench.minecraft.server_probe import wait_for_ready
 from npabench.missions.base import Mission, MissionConfig, MissionRuntime
+from npabench.missions.combat.config_schema import CombatMissionConfig
+from npabench.missions.combat.environment import DEATH_OBJECTIVE as COMBAT_DEATH_OBJECTIVE
 from npabench.recording.recorder import (
     Recorder,
     RecordingOptions,
@@ -301,6 +303,11 @@ def _create_movement_monitor(
         rcon_port=server_endpoint.rcon_port,
         rcon_password=server_endpoint.rcon_password,
         username=mission_config.username,
+        deaths_objective=(
+            COMBAT_DEATH_OBJECTIVE
+            if isinstance(mission_config, CombatMissionConfig)
+            else DEFAULT_DEATHS_OBJECTIVE
+        ),
     )
 
 
