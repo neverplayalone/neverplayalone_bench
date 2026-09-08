@@ -216,21 +216,24 @@ def test_build_config_removes_menu_and_preserves_task() -> None:
     assert config.waves == task.waves
 
 
-def test_prompt_explains_phases_targets_and_score() -> None:
+def test_prompt_briefly_introduces_preparation_and_kill_objectives() -> None:
     task, _ = built_config()
     prompt = fallback_prompt(task)
-    assert "first 10 minutes" in prompt
-    assert "lasts 8 minutes" in prompt
-    assert "exactly 100 points" in prompt
-    assert "crafting itself gives no points" in prompt
-    assert "Each death subtracts 10 points" in prompt
-    assert "until your score reaches zero" in prompt
-    assert "Natural hostile spawning stays disabled" in prompt
-    assert "You keep your inventory after death" in prompt
+    assert prompt.startswith(("Prepare your gear", "Gather resources", "Get equipped for battle"))
+    assert "kill " in prompt
+    assert "waves" in prompt
+    assert "stay alive until the mission ends" in prompt
+    assert prompt.endswith(".")
+    assert "\n" not in prompt
+    assert len(prompt.split()) <= 55
     for target in task.targets:
-        assert target.display_name in prompt
-        assert str(target.target_count) in prompt
-    assert PROMPT_SCHEMA_VERSION == "combat.v2"
+        name = target.display_name
+        if target.target_count != 1:
+            name = {"Drowned": "Drowned", "Witch": "Witches", "Enderman": "Endermen"}.get(
+                name, f"{name}s"
+            )
+        assert f"{target.target_count} {name}" in prompt
+    assert PROMPT_SCHEMA_VERSION == "combat.v5"
 
 
 def test_setup_starts_empty_disables_prep_mobs_and_tracks_kills() -> None:

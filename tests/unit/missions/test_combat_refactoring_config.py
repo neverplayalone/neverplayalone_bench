@@ -97,42 +97,97 @@ def test_world_seed_is_independent_of_target_random_draws() -> None:
     assert original.minecraft_seed != generate_task(config, 8).minecraft_seed
 
 
-def test_prompt_explains_capped_release_queue_and_conditional_reserves(tmp_path: Path) -> None:
-    task = generate_task(default_config(), 0)
+def test_prompt_briefly_covers_preparation_and_combat_and_preserves_the_task(tmp_path: Path) -> None:
+    task = generate_task(default_config(), 1)
     materialized = materialize_task_prompt(task, tmp_path)
     assert materialized.prompt_metadata is not None
-    assert materialized.prompt_metadata.schema_version == PROMPT_SCHEMA_VERSION == "combat.v2"
+    assert materialized.prompt_metadata.schema_version == PROMPT_SCHEMA_VERSION == "combat.v5"
     prompt = materialized.prompt
-    assert "first 10 minutes" in prompt
-    assert "Combat then lasts 8 minutes" in prompt
-    assert "New spawns pause while 3 or more living, loaded mission enemies are present" in prompt
-    assert "Unloaded survivors can reappear" in prompt
-    assert "Released enemies wait in a queue" in prompt
-    assert "does not guarantee an immediate spawn" in prompt
-    assert "Reserve enemies replace missing kill opportunities only" in prompt
-    assert "combat time limit" in prompt
-    assert "- 0 seconds: easy" in prompt
-    assert "- 3 minutes: medium" in prompt
-    assert "- 6 minutes: hard" in prompt
-    assert "Easy (30 points)" in prompt
-    assert "Medium (40 points)" in prompt
-    assert "Hard (30 points)" in prompt
-    assert "Each death subtracts 10 points" in prompt
+    assert prompt == (
+        "Gather resources and craft your combat gear, then kill 8 Spiders, 3 Drowned, "
+        "2 Husks, 1 Witch, and 2 Creepers as enemy waves arrive. "
+        "Adapt to each wave and stay alive until the mission ends."
+    )
+    assert materialized.model_dump(exclude={"prompt", "prompt_metadata"}) == task.model_dump(
+        exclude={"prompt", "prompt_metadata"}
+    )
 
 
-def test_prompt_uses_precise_durations_and_task_points() -> None:
+def test_brief_prompt_omits_detailed_schedule_scoring_and_inventory_rules() -> None:
     data = default_config().model_dump()
     data["duration_seconds"] = 1082
     data["phase"].update(preparation_seconds=601, combat_seconds=481, max_active_mobs=2)
     data["phase"]["wave_offsets_seconds"][1] = 61
     for tier, points in {"easy": 25.0, "medium": 35.0, "hard": 40.0}.items():
         data["tier_rules"][tier]["points"] = points
+    data["scoring"]["death_penalty_points"] = 7.5
+    data["keep_inventory"] = False
     task = generate_task(CombatMissionConfig.model_validate(data), 5)
     prompt = fallback_prompt(task)
-    assert "first 10 minutes 1 second" in prompt
-    assert "Combat then lasts 8 minutes 1 second" in prompt
-    assert "New spawns pause while 2 or more living, loaded mission enemies" in prompt
-    assert "- 1 minute 1 second: easy" in prompt
-    assert "Easy (25 points)" in prompt
-    assert "Medium (35 points)" in prompt
-    assert "Hard (40 points)" in prompt
+    assert prompt == fallback_prompt(generate_task(default_config(), 5))
+    for detail in ["minutes", "seconds", "points", "inventory", "queue", "reserve", "ready", "done"]:
+        assert detail not in prompt.lower()
+
+
+@pytest.mark.parametrize("seed", [0, 1, 42, 2**128 + 17])
+def test_objective_prompt_preserves_every_seeded_target_and_count(seed: int) -> None:
+    task = generate_task(default_config(), seed)
+    prompt = fallback_prompt(task)
+    for target in task.targets:
+        name = target.display_name
+        if target.target_count != 1:
+            name = {"Drowned": "Drowned", "Witch": "Witches", "Enderman": "Endermen"}.get(
+                name, f"{name}s"
+            )
+        assert f"{target.target_count} {name}" in prompt
+    assert len(prompt.split()) <= 55
+
+
+@pytest.mark.parametrize(
+    ("name", "count", "expected_target"),
+    [
+        ("Zombie", 1, "1 Zombie"),
+        ("Zombie", 2, "2 Zombies"),
+        ("Spider", 8, "8 Spiders"),
+        ("Skeleton", 3, "3 Skeletons"),
+        ("Husk", 2, "2 Husks"),
+        ("Stray", 2, "2 Strays"),
+        ("Creeper", 2, "2 Creepers"),
+        ("Cave Spider", 2, "2 Cave Spiders"),
+        ("Drowned", 1, "1 Drowned"),
+        ("Drowned", 3, "3 Drowned"),
+        ("Witch", 1, "1 Witch"),
+        ("Witch", 2, "2 Witches"),
+        ("Enderman", 1, "1 Enderman"),
+        ("Enderman", 2, "2 Endermen"),
+    ],
+)
+def test_objective_prompt_uses_natural_mob_names(name: str, count: int, expected_target: str) -> None:
+    task = generate_task(default_config(), 0)
+    target = task.targets[0].model_copy(update={"display_name": name, "target_count": count})
+    assert f"kill {expected_target}." in fallback_prompt(task.model_copy(update={"targets": [target]}))
+
+
+def test_objective_prompt_joins_two_targets_without_an_extra_comma() -> None:
+    task = generate_task(default_config(), 1)
+    prompt = fallback_prompt(task.model_copy(update={"targets": task.targets[:2]}))
+    assert "kill 8 Spiders and 3 Drowned as enemy waves arrive" in prompt
+
+
+def test_empty_objective_does_not_request_unspecified_mobs() -> None:
+    task = generate_task(default_config(), 0).model_copy(update={"targets": []})
+    assert "kill no mobs." in fallback_prompt(task)
+
+
+def test_prompt_wording_varies_by_seed_but_stays_reproducible() -> None:
+    task = generate_task(default_config(), 1)
+    prompts = []
+    for seed in range(3):
+        variant = task.model_copy(update={"seed": seed})
+        prompt = fallback_prompt(variant)
+        assert prompt == fallback_prompt(variant)
+        assert "8 Spiders, 3 Drowned, 2 Husks, 1 Witch, and 2 Creepers" in prompt
+        assert "Adapt to each wave and stay alive until the mission ends." in prompt
+        assert len(prompt.split()) <= 55
+        prompts.append(prompt)
+    assert len(set(prompts)) == 3
