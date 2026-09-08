@@ -93,21 +93,28 @@ class TierRule(BaseModel):
 
 def default_tier_rules() -> dict[Tier, TierRule]:
     return {
-        "easy": TierRule(points=20.0, target_kinds=1, target_difficulty_units=7.0),
-        "medium": TierRule(points=35.0, target_kinds=2, target_difficulty_units=5.5),
-        "hard": TierRule(points=45.0, target_kinds=2, target_difficulty_units=4.0),
+        "easy": TierRule(points=30.0, target_kinds=1, target_difficulty_units=7.0),
+        "medium": TierRule(points=40.0, target_kinds=2, target_difficulty_units=5.5),
+        "hard": TierRule(points=30.0, target_kinds=2, target_difficulty_units=4.0),
     }
 
 
 class PhaseRules(BaseModel):
-    preparation_seconds: int = 480
-    combat_seconds: int = 420
-    wave_offsets_seconds: list[int] = Field(default_factory=lambda: [0, 90, 180, 270])
+    preparation_seconds: int = 600
+    combat_seconds: int = 480
+    max_active_mobs: int = Field(default=3, gt=0, strict=True)
+    wave_offsets_seconds: list[int] = Field(
+        default_factory=lambda: [0, 60, 120, 180, 240, 300, 360, 420]
+    )
     wave_tiers: list[list[Tier]] = Field(
         default_factory=lambda: [
             ["easy"],
-            ["easy", "medium"],
-            ["medium", "hard"],
+            ["easy"],
+            ["easy"],
+            ["medium"],
+            ["medium"],
+            ["medium"],
+            ["hard"],
             ["hard"],
         ]
     )
@@ -139,6 +146,8 @@ class PhaseRules(BaseModel):
 
     @model_validator(mode="after")
     def validate_schedule(self) -> PhaseRules:
+        if self.spawn_mobs_naturally:
+            raise ValueError("natural mob spawning must stay disabled with max_active_mobs")
         if self.wave_offsets_seconds[-1] >= self.combat_seconds:
             raise ValueError("every wave offset must occur before combat ends")
         if len(self.wave_tiers) != len(self.wave_offsets_seconds):
@@ -237,7 +246,7 @@ class CombatWave(BaseModel):
 
 class CombatMissionConfig(MissionConfig):
     id: str = "combat"
-    duration_seconds: int = 900
+    duration_seconds: int = 1080
     difficulty: Literal["easy", "normal", "hard"] = "normal"
     keep_inventory: bool = True
     phase: PhaseRules = Field(default_factory=PhaseRules)

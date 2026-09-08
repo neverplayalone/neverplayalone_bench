@@ -74,6 +74,7 @@ class CombatMission(Mission):
                     "preparation_seconds": combat_task.preparation_seconds,
                     "combat_seconds": combat_task.combat_seconds,
                     "spawn_mobs_naturally": combat_task.spawn_mobs_naturally,
+                    "max_active_mobs": combat_task.max_active_mobs,
                 },
                 "scoring": {
                     "death_penalty_points": combat_task.death_penalty_points,
@@ -100,10 +101,10 @@ class CombatMission(Mission):
         mission_config: MissionConfig,
         setup_state: Any,
     ) -> MissionRuntime:
-        del setup_state
         controller = CombatWaveController(
             server_endpoint,
             CombatMissionConfig.model_validate(mission_config.model_dump()),
+            setup_state=setup_state,
         )
         return controller.start()
 

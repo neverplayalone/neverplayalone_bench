@@ -7,19 +7,24 @@ generate_structures: true
 difficulty: normal
 keep_inventory: true
 memory: 2G
-duration_seconds: 900
+duration_seconds: 1080
 world_size: 5000
 spawn_time: 1000
 username: npabench_agent
 
 phase:
-  preparation_seconds: 480
-  combat_seconds: 420
-  wave_offsets_seconds: [0, 90, 180, 270]
+  preparation_seconds: 600
+  combat_seconds: 480
+  max_active_mobs: 3
+  wave_offsets_seconds: [0, 60, 120, 180, 240, 300, 360, 420]
   wave_tiers:
     - [easy]
-    - [easy, medium]
-    - [medium, hard]
+    - [easy]
+    - [easy]
+    - [medium]
+    - [medium]
+    - [medium]
+    - [hard]
     - [hard]
   warning_offsets_seconds: [60, 10]
   spawn_mobs_naturally: false
@@ -28,9 +33,9 @@ scoring:
   death_penalty_points: 10.0
 
 tier_rules:
-  easy: {points: 20.0, target_kinds: 1, target_difficulty_units: 7.0, count_choice_slack: 1.0}
-  medium: {points: 35.0, target_kinds: 2, target_difficulty_units: 5.5, count_choice_slack: 0.8}
-  hard: {points: 45.0, target_kinds: 2, target_difficulty_units: 4.0, count_choice_slack: 0.75}
+  easy: {points: 30.0, target_kinds: 1, target_difficulty_units: 7.0, count_choice_slack: 1.0}
+  medium: {points: 40.0, target_kinds: 2, target_difficulty_units: 5.5, count_choice_slack: 0.8}
+  hard: {points: 30.0, target_kinds: 2, target_difficulty_units: 4.0, count_choice_slack: 0.75}
 
 menu:
   easy:
