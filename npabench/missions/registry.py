@@ -5,6 +5,7 @@ from npabench.missions.combat import CombatMission
 from npabench.missions.crafting import CraftingMission
 from npabench.missions.crafting_v2 import CraftingV2Mission
 from npabench.missions.crafting_v3 import CraftingV3Mission
+from npabench.missions.farming import FarmingMission
 from npabench.missions.mining import MiningMission
 from npabench.missions.resource_gathering import ResourceGatheringMission
 
@@ -15,6 +16,7 @@ _MISSIONS: list[Mission] = [
     CraftingV2Mission(),
     CraftingV3Mission(),
     CombatMission(),
+    FarmingMission(),
 ]
 
 MISSIONS: dict[str, Mission] = {mission.id: mission for mission in _MISSIONS}

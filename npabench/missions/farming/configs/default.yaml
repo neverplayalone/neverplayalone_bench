@@ -1,0 +1,254 @@
+# Farming v1 -- four crop-specific plots and plot-scoped mature-harvest scoring.
+
+id: farming
+minecraft_version: "1.21.11"
+world_type: normal
+generate_structures: false
+difficulty: peaceful
+keep_inventory: true
+memory: 2G
+duration_seconds: 1200
+world_size: 5000
+spawn_time: 6000
+username: npabench_agent
+
+sampling:
+  easy_targets: 2
+  medium_targets: 2
+
+environment:
+  hub_radius: 24
+  plot_size: 7
+  runtime_poll_seconds: 1.0
+  utility_log_count: 8
+  datapack_name: npabench_farming
+
+menu:
+  crops:
+    wheat:
+      item: wheat
+      starter_item: wheat_seeds
+      starter_count: 12
+      display_name: Wheat
+      difficulty: easy
+      template: farmland
+      target_range: [16, 24]
+      points: 20
+      growth_step_seconds: 40
+      planted_block: wheat
+      mature_block: "wheat[age=7]"
+      harvest_mode: mature_state
+      max_age: 7
+    carrot:
+      item: carrot
+      starter_item: carrot
+      starter_count: 12
+      display_name: Carrots
+      difficulty: easy
+      template: farmland
+      target_range: [16, 24]
+      points: 20
+      growth_step_seconds: 40
+      planted_block: carrots
+      mature_block: "carrots[age=7]"
+      harvest_mode: mature_state
+      max_age: 7
+    potato:
+      item: potato
+      starter_item: potato
+      starter_count: 12
+      display_name: Potatoes
+      difficulty: easy
+      template: farmland
+      target_range: [16, 24]
+      points: 20
+      growth_step_seconds: 40
+      planted_block: potatoes
+      mature_block: "potatoes[age=7]"
+      harvest_mode: mature_state
+      max_age: 7
+    beetroot:
+      item: beetroot
+      starter_item: beetroot_seeds
+      starter_count: 12
+      display_name: Beetroot
+      difficulty: easy
+      template: farmland
+      target_range: [16, 24]
+      points: 20
+      growth_step_seconds: 75
+      planted_block: beetroots
+      mature_block: "beetroots[age=3]"
+      harvest_mode: mature_state
+      max_age: 3
+    sugar_cane:
+      item: sugar_cane
+      starter_item: sugar_cane
+      starter_count: 8
+      display_name: Sugar Cane
+      difficulty: easy
+      template: water_edge
+      target_range: [10, 16]
+      points: 20
+      growth_step_seconds: 65
+      planted_block: sugar_cane
+      mature_block: sugar_cane
+      generated_block: sugar_cane
+      harvest_mode: runtime_generated
+    cactus:
+      item: cactus
+      starter_item: cactus
+      starter_count: 8
+      display_name: Cactus
+      difficulty: easy
+      template: cactus
+      target_range: [8, 14]
+      points: 20
+      growth_step_seconds: 70
+      planted_block: cactus
+      mature_block: cactus
+      generated_block: cactus
+      harvest_mode: runtime_generated
+    bamboo:
+      item: bamboo
+      starter_item: bamboo
+      starter_count: 10
+      display_name: Bamboo
+      difficulty: easy
+      template: bamboo
+      target_range: [12, 18]
+      points: 20
+      growth_step_seconds: 55
+      planted_block: bamboo
+      mature_block: bamboo
+      generated_block: bamboo
+      harvest_mode: runtime_generated
+    sweet_berries:
+      item: sweet_berries
+      starter_item: sweet_berries
+      starter_count: 12
+      display_name: Sweet Berries
+      difficulty: easy
+      template: sweet_berries
+      target_range: [16, 24]
+      points: 20
+      growth_step_seconds: 75
+      planted_block: sweet_berry_bush
+      mature_block: "sweet_berry_bush[age=3]"
+      harvest_mode: mature_state
+      max_age: 3
+
+    melon:
+      item: melon
+      starter_item: melon_seeds
+      starter_count: 8
+      display_name: Melons
+      difficulty: medium
+      template: stem
+      target_range: [6, 10]
+      points: 30
+      growth_step_seconds: 35
+      planted_block: melon_stem
+      mature_block: melon
+      generated_block: melon
+      harvest_mode: runtime_generated
+      max_age: 7
+    pumpkin:
+      item: pumpkin
+      starter_item: pumpkin_seeds
+      starter_count: 8
+      display_name: Pumpkins
+      difficulty: medium
+      template: stem
+      target_range: [6, 10]
+      points: 30
+      growth_step_seconds: 35
+      planted_block: pumpkin_stem
+      mature_block: pumpkin
+      generated_block: pumpkin
+      harvest_mode: runtime_generated
+      max_age: 7
+    cocoa:
+      item: cocoa_beans
+      starter_item: cocoa_beans
+      starter_count: 8
+      display_name: Cocoa Pods
+      difficulty: medium
+      template: cocoa
+      target_range: [8, 12]
+      points: 30
+      growth_step_seconds: 100
+      planted_block: cocoa
+      mature_block: "cocoa[age=2]"
+      harvest_mode: mature_state
+      max_age: 2
+    kelp:
+      item: kelp
+      starter_item: kelp
+      starter_count: 8
+      display_name: Kelp
+      difficulty: medium
+      template: kelp
+      target_range: [10, 16]
+      points: 30
+      growth_step_seconds: 65
+      planted_block: kelp
+      mature_block: kelp
+      generated_block: kelp
+      harvest_mode: runtime_generated
+    mushroom:
+      item: red_mushroom
+      starter_item: red_mushroom
+      starter_count: 6
+      display_name: Mushrooms
+      difficulty: medium
+      template: mushroom
+      target_range: [8, 12]
+      points: 30
+      growth_step_seconds: 80
+      planted_block: red_mushroom
+      mature_block: red_mushroom
+      generated_block: red_mushroom
+      harvest_mode: runtime_generated
+    glow_berries:
+      item: glow_berries
+      starter_item: glow_berries
+      starter_count: 8
+      display_name: Glow Berries
+      difficulty: medium
+      template: glow_berries
+      target_range: [8, 12]
+      points: 30
+      growth_step_seconds: 90
+      planted_block: cave_vines
+      mature_block: "cave_vines[berries=true]"
+      generated_block: cave_vines
+      harvest_mode: runtime_generated
+    oak_tree:
+      item: oak_log
+      starter_item: oak_sapling
+      starter_count: 4
+      display_name: Oak Trees
+      difficulty: medium
+      template: tree
+      target_range: [2, 4]
+      points: 30
+      growth_step_seconds: 150
+      planted_block: oak_sapling
+      mature_block: oak_log
+      generated_block: oak_log
+      harvest_mode: runtime_generated
+    nether_wart:
+      item: nether_wart
+      starter_item: nether_wart
+      starter_count: 12
+      display_name: Nether Wart
+      difficulty: medium
+      template: nether_wart
+      target_range: [10, 16]
+      points: 30
+      growth_step_seconds: 75
+      planted_block: nether_wart
+      mature_block: "nether_wart[age=3]"
+      harvest_mode: mature_state
+      max_age: 3

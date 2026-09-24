@@ -131,6 +131,17 @@ class Mission(ABC):
     ) -> Task:
         return task
 
+    def prepare_reference_world(
+        self,
+        data_dir: Path,
+        mission_config: MissionConfig,
+    ) -> None:
+        """Install mission-owned files after the reference world is generated.
+
+        The resulting directory is cloned for every agent run, so missions can
+        use this hook for static datapacks without mutating a shared live server.
+        """
+
     @abstractmethod
     def configure_world(self, rcon: MCRcon, mission_config: MissionConfig) -> None: ...
 
