@@ -97,6 +97,7 @@ def evaluate_single_agent(
     base_game_port: int = DEFAULT_BASE_GAME_PORT,
     base_rcon_port: int = DEFAULT_BASE_RCON_PORT,
     sidecar_containers: tuple[str, ...] = (),
+    container_prefix: str = "npabench-eval",
 ) -> AgentRunReport:
     mission = get_mission(mission_id)
     base_config = _load_mission_config(mission, config_path)
@@ -113,12 +114,14 @@ def evaluate_single_agent(
         root_output_dir / "reference_world",
         base_game_port=base_game_port,
         base_rcon_port=base_rcon_port,
+        container_prefix=f"{container_prefix}-template",
     )
     agent_output_dir = root_output_dir / "agents" / safe_name(run_agent.name)
     agent_run_slot = AgentRunSlot.allocate(
         slot_id=0,
         base_game_port=base_game_port,
         base_rcon_port=base_rcon_port,
+        container_prefix=container_prefix,
         data_root=agent_output_dir / "_slot",
         sidecar_containers=sidecar_containers,
     )

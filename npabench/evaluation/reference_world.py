@@ -225,6 +225,7 @@ class ReferenceWorldBuilder:
         *,
         base_game_port: int,
         base_rcon_port: int,
+        container_prefix: str = "npabench-template",
     ) -> Path:
         output_dir = output_dir.resolve()
         cleanup_run_worlds(output_dir)
@@ -233,7 +234,7 @@ class ReferenceWorldBuilder:
             slot_id=0,
             base_game_port=base_game_port,
             base_rcon_port=base_rcon_port,
-            container_prefix="npabench-template",
+            container_prefix=container_prefix,
             data_root=output_dir.parent / "_builder",
         )
         start_agent_run_slot(builder_slot, mission_config)

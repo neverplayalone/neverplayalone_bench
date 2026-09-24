@@ -23,3 +23,17 @@ def test_create_agent_returns_sandboxed_agent(tmp_path) -> None:
     )
     assert isinstance(agent, SandboxedAgent)
     assert agent.container_name == "npabench-agent-3"
+
+
+def test_sandboxed_agent_uses_custom_slot_prefix_for_concurrent_runs(tmp_path) -> None:
+    agent = create_agent(
+        AgentSpec(name="a", path=tmp_path),
+        agent_mode=AgentMode.SANDBOXED,
+        agent_run_slot=AgentRunSlot.allocate(
+            slot_id=0,
+            container_prefix="npa-rewrite-123",
+            data_root=tmp_path / "slot",
+        ),
+    )
+    assert isinstance(agent, SandboxedAgent)
+    assert agent.container_name == "npa-rewrite-123-0-agent"
