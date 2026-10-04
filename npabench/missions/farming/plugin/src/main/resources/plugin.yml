@@ -1,0 +1,5 @@
+name: NpaFarmingLedger
+version: 1.0.0
+main: org.npabench.farming.FarmingLedgerPlugin
+api-version: '1.21'
+description: Verified farming harvest ledger for NPABench

@@ -6,13 +6,17 @@ import time
 from typing import Any
 
 from npabench.evaluation.run_slot import ServerEndpoint
-from npabench.minecraft.rcon_client import command_with_retry, rcon_session
-from npabench.missions.farming.config_schema import FarmingMissionConfig, FarmingTargetSpec
-from npabench.missions.farming.datapack import HARVEST_OBJECTIVE, READY_OBJECTIVE
+from npabench.minecraft.rcon_client import rcon_session
+from npabench.missions.farming.config_schema import FarmingMissionConfig
+from npabench.missions.farming.ledger import (
+    HARVEST_OBJECTIVE,
+    PLUGIN_SCORE_HOLDER,
+    SYSTEM_OBJECTIVE,
+)
 
 
 class FarmingController:
-    """Advance plot crops and report the datapack's verified harvest ledger."""
+    """Observe naturally grown harvests without changing crop state."""
 
     def __init__(
         self,
@@ -31,18 +35,12 @@ class FarmingController:
         self._status = "not_started"
         self._errors: list[str] = []
         self._events: list[dict[str, Any]] = []
-        self._growth_steps: dict[str, int] = {}
         self._harvests: dict[str, int] = {}
-        self._next_growth: dict[str, float] = {}
 
     def start(self) -> FarmingController:
         if self._thread is not None:
             return self
         self._started_at = time.time()
-        started = time.monotonic()
-        self._next_growth = {
-            target.key: started + target.growth_step_seconds for target in self.config.targets
-        }
         self._status = "running"
         self._thread = threading.Thread(
             target=self._run,
@@ -77,7 +75,8 @@ class FarmingController:
                 "status": self._status,
                 "started_at": self._started_at,
                 "stopped_at": self._stopped_at,
-                "growth_steps": dict(self._growth_steps),
+                "growth_mode": "minecraft_random_ticks",
+                "growth_steps": {},
                 "harvests": dict(self._harvests),
                 "events": list(self._events),
                 "errors": list(self._errors),
@@ -87,174 +86,14 @@ class FarmingController:
         try:
             with self._rcon() as rcon:
                 while not self._stop.is_set():
-                    self._sanitize_unearned_states(rcon)
-                    now = time.monotonic()
-                    for target in self.config.targets:
-                        while now >= self._next_growth[target.key] and not self._stop.is_set():
-                            self._advance_target(rcon, target)
-                            self._next_growth[target.key] += target.growth_step_seconds
-                            with self._lock:
-                                step = self._growth_steps.get(target.key, 0) + 1
-                                self._growth_steps[target.key] = step
-                                self._events.append(
-                                    {
-                                        "kind": "growth",
-                                        "crop": target.key,
-                                        "step": step,
-                                        "at": time.time(),
-                                    }
-                                )
                     self._observe_harvests(rcon)
                     self._stop.wait(self.config.environment.runtime_poll_seconds)
         except Exception as exc:  # noqa: BLE001 - runtime failures invalidate farming fairness
             self._record_error(str(exc))
 
-    def _advance_target(self, rcon: Any, target: FarmingTargetSpec) -> None:
-        plot = self._plot(target.key)
-        if target.template in {"farmland", "sweet_berries", "cocoa", "nether_wart"}:
-            self._advance_ages(rcon, target, plot)
-        elif target.template == "stem":
-            self._advance_ages(rcon, target, plot)
-            self._generate_cells(
-                rcon,
-                target,
-                plot,
-                source_state=f"{target.planted_block}[age={target.max_age}]",
-            )
-        elif target.template in {"water_edge", "cactus", "bamboo"}:
-            self._generate_cells(rcon, target, plot, source_state=target.planted_block)
-        elif target.template == "kelp":
-            self._generate_kelp(rcon, target, plot)
-        elif target.template == "mushroom":
-            self._generate_cells(rcon, target, plot, source_state=target.planted_block)
-        elif target.template == "glow_berries":
-            self._ripen_glow_berries(rcon, target, plot)
-        elif target.template == "tree":
-            self._grow_trees(rcon, target, plot)
-        else:  # pragma: no cover - schema and dispatcher must stay exhaustive
-            raise RuntimeError(f"unsupported farming plot template: {target.template}")
-
-    def _advance_ages(
-        self,
-        rcon: Any,
-        target: FarmingTargetSpec,
-        plot: dict[str, Any],
-    ) -> None:
-        if target.max_age is None:
-            raise RuntimeError(f"{target.key} has no max_age")
-        for age in range(target.max_age - 1, -1, -1):
-            command_with_retry(
-                rcon,
-                f"fill {plot['x1']} {plot['ground_y']} {plot['z1']} "
-                f"{plot['x2']} {plot['ground_y'] + 3} {plot['z2']} "
-                f"minecraft:{target.planted_block}[age={age + 1}] replace "
-                f"minecraft:{target.planted_block}[age={age}]",
-            )
-
-    def _generate_cells(
-        self,
-        rcon: Any,
-        target: FarmingTargetSpec,
-        plot: dict[str, Any],
-        *,
-        source_state: str,
-    ) -> None:
-        assert target.generated_block is not None
-        for cell in plot["cells"]:
-            source = cell.get("source")
-            if source is None:
-                continue
-            sx, sy, sz = source
-            empty = cell.get("empty_block", "air")
-            selector = f"@e[type=minecraft:marker,tag={cell['tag']},limit=1]"
-            command_with_retry(
-                rcon,
-                f"execute as {selector} at @s if score @s {READY_OBJECTIVE} matches 0 "
-                f"if block {sx} {sy} {sz} minecraft:{source_state} "
-                f"if block ~ ~ ~ minecraft:{empty} store success score @s {READY_OBJECTIVE} "
-                f"run setblock ~ ~ ~ minecraft:{target.generated_block}",
-            )
-
-    def _generate_kelp(
-        self,
-        rcon: Any,
-        target: FarmingTargetSpec,
-        plot: dict[str, Any],
-    ) -> None:
-        assert target.generated_block is not None
-        for cell in plot["cells"]:
-            sx, sy, sz = cell["source"]
-            selector = f"@e[type=minecraft:marker,tag={cell['tag']},limit=1]"
-            command_with_retry(
-                rcon,
-                f"execute as {selector} at @s if score @s {READY_OBJECTIVE} matches 0 "
-                f"if block {sx} {sy} {sz} minecraft:kelp if block ~ ~ ~ minecraft:water "
-                f"store success score @s {READY_OBJECTIVE} run setblock ~ ~ ~ minecraft:kelp",
-            )
-            command_with_retry(
-                rcon,
-                f"execute as {selector} at @s if score @s {READY_OBJECTIVE} matches 0 "
-                f"if block {sx} {sy} {sz} minecraft:kelp_plant if block ~ ~ ~ minecraft:water "
-                f"store success score @s {READY_OBJECTIVE} run setblock ~ ~ ~ minecraft:kelp",
-            )
-
-    def _ripen_glow_berries(
-        self,
-        rcon: Any,
-        target: FarmingTargetSpec,
-        plot: dict[str, Any],
-    ) -> None:
-        del target
-        for cell in plot["cells"]:
-            selector = f"@e[type=minecraft:marker,tag={cell['tag']},limit=1]"
-            command_with_retry(
-                rcon,
-                f"execute as {selector} at @s if score @s {READY_OBJECTIVE} matches 0 "
-                "if block ~ ~ ~ minecraft:cave_vines[berries=false] "
-                f"store success score @s {READY_OBJECTIVE} run setblock ~ ~ ~ "
-                "minecraft:cave_vines[berries=true]",
-            )
-
-    def _sanitize_unearned_states(self, rcon: Any) -> None:
-        for target in self.config.targets:
-            if target.template != "glow_berries":
-                continue
-            for cell in self._plot(target.key)["cells"]:
-                selector = f"@e[type=minecraft:marker,tag={cell['tag']},limit=1]"
-                command_with_retry(
-                    rcon,
-                    f"execute as {selector} at @s if score @s {READY_OBJECTIVE} matches 0 "
-                    "if block ~ ~ ~ minecraft:cave_vines[berries=true] run setblock ~ ~ ~ "
-                    "minecraft:cave_vines[berries=false]",
-                )
-
-    def _grow_trees(
-        self,
-        rcon: Any,
-        target: FarmingTargetSpec,
-        plot: dict[str, Any],
-    ) -> None:
-        del target
-        for cell in plot["cells"]:
-            selector = f"@e[type=minecraft:marker,tag={cell['tag']},limit=1]"
-            command_with_retry(
-                rcon,
-                f"execute as {selector} at @s if score @s {READY_OBJECTIVE} matches 0 "
-                f"if block ~ ~ ~ minecraft:oak_sapling store success score @s {READY_OBJECTIVE} "
-                "run setblock ~ ~ ~ minecraft:oak_log",
-            )
-            command_with_retry(
-                rcon,
-                f"execute as {selector} at @s if score @s {READY_OBJECTIVE} matches 1 "
-                "run fill ~ ~1 ~ ~ ~3 ~ minecraft:oak_log",
-            )
-            command_with_retry(
-                rcon,
-                f"execute as {selector} at @s if score @s {READY_OBJECTIVE} matches 1 "
-                "run fill ~-1 ~3 ~-1 ~1 ~4 ~1 minecraft:oak_leaves[persistent=true] replace air",
-            )
-
     def _observe_harvests(self, rcon: Any) -> None:
+        if _read_score_strict(rcon, PLUGIN_SCORE_HOLDER, SYSTEM_OBJECTIVE) != 1:
+            raise RuntimeError("farming harvest plugin is not ready")
         observed = {
             target.key: _read_score_strict(rcon, target.harvest_holder, HARVEST_OBJECTIVE)
             for target in self.config.targets
@@ -273,12 +112,6 @@ class FarmingController:
                             "at": time.time(),
                         }
                     )
-
-    def _plot(self, target_key: str) -> dict[str, Any]:
-        for plot in self.setup_state.get("plots", []):
-            if plot.get("target_key") == target_key:
-                return plot
-        raise RuntimeError(f"farming runtime is missing plot for {target_key}")
 
     def _rcon(self):
         return rcon_session(

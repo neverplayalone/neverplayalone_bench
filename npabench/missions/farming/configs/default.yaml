@@ -1,4 +1,4 @@
-# Farming v1 -- four crop-specific plots and plot-scoped mature-harvest scoring.
+# Farming v1 -- random natural world and mature-harvest scoring anywhere.
 
 id: farming
 minecraft_version: "1.21.11"
@@ -17,11 +17,9 @@ sampling:
   medium_targets: 2
 
 environment:
-  hub_radius: 24
-  plot_size: 7
+  random_tick_speed: 3
   runtime_poll_seconds: 1.0
   utility_log_count: 8
-  datapack_name: npabench_farming
 
 menu:
   crops:
@@ -34,7 +32,6 @@ menu:
       template: farmland
       target_range: [16, 24]
       points: 20
-      growth_step_seconds: 40
       planted_block: wheat
       mature_block: "wheat[age=7]"
       harvest_mode: mature_state
@@ -48,7 +45,6 @@ menu:
       template: farmland
       target_range: [16, 24]
       points: 20
-      growth_step_seconds: 40
       planted_block: carrots
       mature_block: "carrots[age=7]"
       harvest_mode: mature_state
@@ -62,7 +58,6 @@ menu:
       template: farmland
       target_range: [16, 24]
       points: 20
-      growth_step_seconds: 40
       planted_block: potatoes
       mature_block: "potatoes[age=7]"
       harvest_mode: mature_state
@@ -76,7 +71,6 @@ menu:
       template: farmland
       target_range: [16, 24]
       points: 20
-      growth_step_seconds: 75
       planted_block: beetroots
       mature_block: "beetroots[age=3]"
       harvest_mode: mature_state
@@ -90,11 +84,10 @@ menu:
       template: water_edge
       target_range: [10, 16]
       points: 20
-      growth_step_seconds: 65
       planted_block: sugar_cane
       mature_block: sugar_cane
       generated_block: sugar_cane
-      harvest_mode: runtime_generated
+      harvest_mode: naturally_generated
     cactus:
       item: cactus
       starter_item: cactus
@@ -104,11 +97,10 @@ menu:
       template: cactus
       target_range: [8, 14]
       points: 20
-      growth_step_seconds: 70
       planted_block: cactus
       mature_block: cactus
       generated_block: cactus
-      harvest_mode: runtime_generated
+      harvest_mode: naturally_generated
     bamboo:
       item: bamboo
       starter_item: bamboo
@@ -118,11 +110,10 @@ menu:
       template: bamboo
       target_range: [12, 18]
       points: 20
-      growth_step_seconds: 55
       planted_block: bamboo
       mature_block: bamboo
       generated_block: bamboo
-      harvest_mode: runtime_generated
+      harvest_mode: naturally_generated
     sweet_berries:
       item: sweet_berries
       starter_item: sweet_berries
@@ -132,7 +123,6 @@ menu:
       template: sweet_berries
       target_range: [16, 24]
       points: 20
-      growth_step_seconds: 75
       planted_block: sweet_berry_bush
       mature_block: "sweet_berry_bush[age=3]"
       harvest_mode: mature_state
@@ -147,11 +137,10 @@ menu:
       template: stem
       target_range: [6, 10]
       points: 30
-      growth_step_seconds: 35
       planted_block: melon_stem
       mature_block: melon
       generated_block: melon
-      harvest_mode: runtime_generated
+      harvest_mode: naturally_generated
       max_age: 7
     pumpkin:
       item: pumpkin
@@ -162,11 +151,10 @@ menu:
       template: stem
       target_range: [6, 10]
       points: 30
-      growth_step_seconds: 35
       planted_block: pumpkin_stem
       mature_block: pumpkin
       generated_block: pumpkin
-      harvest_mode: runtime_generated
+      harvest_mode: naturally_generated
       max_age: 7
     cocoa:
       item: cocoa_beans
@@ -177,7 +165,6 @@ menu:
       template: cocoa
       target_range: [8, 12]
       points: 30
-      growth_step_seconds: 100
       planted_block: cocoa
       mature_block: "cocoa[age=2]"
       harvest_mode: mature_state
@@ -191,11 +178,10 @@ menu:
       template: kelp
       target_range: [10, 16]
       points: 30
-      growth_step_seconds: 65
       planted_block: kelp
       mature_block: kelp
       generated_block: kelp
-      harvest_mode: runtime_generated
+      harvest_mode: naturally_generated
     mushroom:
       item: red_mushroom
       starter_item: red_mushroom
@@ -205,11 +191,10 @@ menu:
       template: mushroom
       target_range: [8, 12]
       points: 30
-      growth_step_seconds: 80
       planted_block: red_mushroom
       mature_block: red_mushroom
       generated_block: red_mushroom
-      harvest_mode: runtime_generated
+      harvest_mode: naturally_generated
     glow_berries:
       item: glow_berries
       starter_item: glow_berries
@@ -219,11 +204,10 @@ menu:
       template: glow_berries
       target_range: [8, 12]
       points: 30
-      growth_step_seconds: 90
       planted_block: cave_vines
       mature_block: "cave_vines[berries=true]"
       generated_block: cave_vines
-      harvest_mode: runtime_generated
+      harvest_mode: naturally_generated
     oak_tree:
       item: oak_log
       starter_item: oak_sapling
@@ -233,11 +217,10 @@ menu:
       template: tree
       target_range: [2, 4]
       points: 30
-      growth_step_seconds: 150
       planted_block: oak_sapling
       mature_block: oak_log
       generated_block: oak_log
-      harvest_mode: runtime_generated
+      harvest_mode: naturally_generated
     nether_wart:
       item: nether_wart
       starter_item: nether_wart
@@ -247,7 +230,6 @@ menu:
       template: nether_wart
       target_range: [10, 16]
       points: 30
-      growth_step_seconds: 75
       planted_block: nether_wart
       mature_block: "nether_wart[age=3]"
       harvest_mode: mature_state

@@ -10,9 +10,9 @@ from npabench.evaluation.run_slot import ServerEndpoint
 from npabench.evaluation.run_trace import AgentRunTrace
 from npabench.missions.base import Mission, MissionConfig, MissionRuntime, Task
 from npabench.missions.farming.config_schema import FarmingMissionConfig
-from npabench.missions.farming.datapack import write_farming_datapack
 from npabench.missions.farming.environment import configure_farming_world, setup_farming_agent
 from npabench.missions.farming.final_state import collect_farming_state
+from npabench.missions.farming.plugin import install_farming_plugin
 from npabench.missions.farming.runtime import FarmingController
 from npabench.missions.farming.scoring import score_farming_run
 from npabench.missions.farming.task import FarmingTask, generate_task, target_specs
@@ -58,7 +58,6 @@ class FarmingMission(Mission):
                 "prompt": farming_task.prompt,
                 "duration_seconds": farming_task.duration_seconds,
                 "keep_inventory": farming_task.keep_inventory,
-                "layout_seed": farming_task.layout_seed,
                 "targets": [target.model_dump() for target in target_specs(farming_task.targets)],
             }
         )
@@ -69,7 +68,7 @@ class FarmingMission(Mission):
         data_dir: Path,
         mission_config: MissionConfig,
     ) -> None:
-        write_farming_datapack(
+        install_farming_plugin(
             data_dir,
             FarmingMissionConfig.model_validate(mission_config.model_dump()),
         )

@@ -22,10 +22,9 @@ PlotTemplate = Literal[
     "tree",
     "nether_wart",
 ]
-HarvestMode = Literal["mature_state", "runtime_generated"]
+HarvestMode = Literal["mature_state", "naturally_generated"]
 MINECRAFT_ID_RE = re.compile(r"^[a-z0-9_.-]+$")
 BLOCK_STATE_RE = re.compile(r"^[a-z0-9_.-]+(?:\[[a-z0-9_=,.-]+\])?$")
-PLOT_COLORS: tuple[str, ...] = ("red", "blue", "yellow", "lime")
 
 
 def _safe_identifier(value: str, label: str) -> str:
@@ -50,7 +49,6 @@ class CropMenuEntry(BaseModel):
     template: PlotTemplate
     target_range: tuple[int, int]
     points: float = Field(gt=0)
-    growth_step_seconds: int = Field(gt=0)
     planted_block: str
     mature_block: str
     harvest_mode: HarvestMode
@@ -88,8 +86,8 @@ class CropMenuEntry(BaseModel):
             and self.max_age is None
         ):
             raise ValueError(f"{self.template} crops require max_age")
-        if self.harvest_mode == "runtime_generated" and not self.generated_block:
-            raise ValueError("runtime-generated crops require generated_block")
+        if self.harvest_mode == "naturally_generated" and not self.generated_block:
+            raise ValueError("naturally generated crops require generated_block")
         expected_points = 20.0 if self.difficulty == "easy" else 30.0
         if self.points != expected_points:
             raise ValueError(
@@ -116,16 +114,9 @@ class FarmingSamplingRules(BaseModel):
 
 
 class FarmingEnvironmentRules(BaseModel):
-    hub_radius: int = Field(default=24, ge=20, le=40)
-    plot_size: Literal[7] = 7
+    random_tick_speed: int = Field(default=3, ge=1, le=100)
     runtime_poll_seconds: float = Field(default=1.0, gt=0)
     utility_log_count: int = Field(default=8, gt=0, le=64)
-    datapack_name: str = "npabench_farming"
-
-    @field_validator("datapack_name")
-    @classmethod
-    def datapack_name_must_be_safe(cls, value: str) -> str:
-        return _safe_identifier(value, "farming datapack name")
 
 
 class FarmingTargetSpec(BaseModel):
@@ -138,14 +129,13 @@ class FarmingTargetSpec(BaseModel):
     item: str
     starter_item: str
     starter_count: int = Field(gt=0, le=64)
-    growth_step_seconds: int = Field(gt=0)
     planted_block: str
     mature_block: str
     harvest_mode: HarvestMode
     max_age: int | None = Field(default=None, gt=0)
     generated_block: str | None = None
     harvest_holder: str
-    plot_tag: str
+    tracking_tag: str
 
     @field_validator("key", "item", "starter_item", "planted_block", "generated_block")
     @classmethod
@@ -159,10 +149,10 @@ class FarmingTargetSpec(BaseModel):
             raise ValueError("farming harvest holders must be safe fake-player names")
         return value
 
-    @field_validator("plot_tag")
+    @field_validator("tracking_tag")
     @classmethod
-    def plot_tag_must_be_safe(cls, value: str) -> str:
-        return _safe_identifier(value, "farming plot tag")
+    def tracking_tag_must_be_safe(cls, value: str) -> str:
+        return _safe_identifier(value, "farming tracking tag")
 
     @field_validator("mature_block")
     @classmethod
@@ -173,8 +163,8 @@ class FarmingTargetSpec(BaseModel):
 
     @model_validator(mode="after")
     def validate_target(self) -> FarmingTargetSpec:
-        if self.harvest_mode == "runtime_generated" and not self.generated_block:
-            raise ValueError("runtime-generated targets require generated_block")
+        if self.harvest_mode == "naturally_generated" and not self.generated_block:
+            raise ValueError("naturally generated targets require generated_block")
         return self
 
 
@@ -183,7 +173,6 @@ class FarmingMissionConfig(MissionConfig):
     duration_seconds: int = 1200
     difficulty: Literal["peaceful"] = "peaceful"
     keep_inventory: bool = True
-    layout_seed: int = 0
     sampling: FarmingSamplingRules = Field(default_factory=FarmingSamplingRules)
     environment: FarmingEnvironmentRules = Field(default_factory=FarmingEnvironmentRules)
     menu: FarmingMenu | None = None
@@ -211,8 +200,8 @@ class FarmingMissionConfig(MissionConfig):
                 raise ValueError("farming targets must have unique keys")
             if len({target.harvest_holder for target in self.targets}) != len(self.targets):
                 raise ValueError("farming targets must have unique harvest holders")
-            if len({target.plot_tag for target in self.targets}) != len(self.targets):
-                raise ValueError("farming targets must have unique plot tags")
+            if len({target.tracking_tag for target in self.targets}) != len(self.targets):
+                raise ValueError("farming targets must have unique tracking tags")
             actual = {
                 difficulty: sum(target.difficulty == difficulty for target in self.targets)
                 for difficulty in expected

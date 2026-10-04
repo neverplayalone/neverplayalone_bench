@@ -35,7 +35,13 @@ include = ["npabench*"]
 "npabench.missions.crafting_v2" = ["configs/*.yaml"]
 "npabench.missions.crafting_v3" = ["configs/*.yaml"]
 "npabench.missions.combat" = ["configs/*.yaml"]
-"npabench.missions.farming" = ["configs/*.yaml"]
+"npabench.missions.farming" = [
+    "configs/*.yaml",
+    "plugin/npabench-farming-ledger.jar",
+    "plugin/build.sh",
+    "plugin/src/main/java/org/npabench/farming/FarmingLedgerPlugin.java",
+    "plugin/src/main/resources/*.yml",
+]
 
 [tool.ruff]
 line-length = 100

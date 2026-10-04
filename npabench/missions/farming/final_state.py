@@ -7,7 +7,7 @@ from mcrcon import MCRcon
 from npabench.evaluation.run_trace import FinalAgentState
 from npabench.minecraft.rcon_helpers import count_item, parse_pos, parse_scalar, read_score
 from npabench.missions.farming.config_schema import FarmingMissionConfig
-from npabench.missions.farming.datapack import HARVEST_OBJECTIVE
+from npabench.missions.farming.ledger import HARVEST_OBJECTIVE
 from npabench.missions.farming.environment import DEATH_OBJECTIVE
 
 
@@ -47,5 +47,8 @@ def collect_farming_state(
         "deaths": deaths,
         "alive": final_state.health is not None and final_state.health > 0,
         "spawn": {"position": setup_state.get("spawn")},
+        "supply_cache": setup_state.get("supply_cache"),
         "plots": setup_state.get("plots", []),
+        "sources": setup_state.get("sources", []),
+        "water_source": setup_state.get("water_source"),
     }

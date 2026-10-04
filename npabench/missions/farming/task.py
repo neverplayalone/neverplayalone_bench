@@ -11,7 +11,6 @@ from npabench.missions.farming.config_schema import (
     FarmingMissionConfig,
     FarmingTargetSpec,
     HarvestMode,
-    PLOT_COLORS,
     PlotTemplate,
 )
 
@@ -22,21 +21,19 @@ class FarmingTaskTarget(TaskTarget):
     item: str
     starter_item: str
     starter_count: int
-    growth_step_seconds: int
     planted_block: str
     mature_block: str
     harvest_mode: HarvestMode
     max_age: int | None = None
     generated_block: str | None = None
     harvest_holder: str
-    plot_tag: str
+    tracking_tag: str
 
 
 class FarmingTask(Task):
     targets: list[FarmingTaskTarget] = Field(default_factory=list)
     duration_seconds: int
     keep_inventory: bool
-    layout_seed: int
 
 
 def generate_task(
@@ -64,12 +61,10 @@ def generate_task(
     ]
     selected_id = task_id or build_task_id(seed, targets)
     minecraft_seed = random.Random(f"farming-world:{seed}").getrandbits(64)
-    layout_seed = random.Random(f"farming-layout:{seed}").getrandbits(64)
     task = FarmingTask(
         task_id=selected_id,
         seed=seed,
         minecraft_seed=minecraft_seed,
-        layout_seed=layout_seed,
         targets=targets,
         duration_seconds=base_config.duration_seconds,
         keep_inventory=base_config.keep_inventory,
@@ -95,14 +90,13 @@ def _target_from_menu(
         item=entry.item,
         starter_item=entry.starter_item,
         starter_count=entry.starter_count,
-        growth_step_seconds=entry.growth_step_seconds,
         planted_block=entry.planted_block,
         mature_block=entry.mature_block,
         harvest_mode=entry.harvest_mode,
         max_age=entry.max_age,
         generated_block=entry.generated_block,
         harvest_holder=f"#farm{index:02d}",
-        plot_tag=f"nff_plot_{index:02d}",
+        tracking_tag=f"nff_target_{index:02d}",
     )
 
 
@@ -113,21 +107,27 @@ def build_task_id(seed: int, targets: list[FarmingTaskTarget]) -> str:
 
 def build_prompt(task: FarmingTask) -> str:
     target_lines = [
-        f"- Harvest {target.target_count} valid {target.display_name} units from the "
-        f"{PLOT_COLORS[index]}-bordered plot "
+        f"- Harvest {target.target_count} mature {target.display_name} units anywhere in the world "
         f"({target.points:g} points, {target.difficulty})."
-        for index, target in enumerate(task.targets)
+        for target in task.targets
     ]
     minutes = task.duration_seconds // 60
     return "\n".join(
         [
-            "You start with an empty inventory in a random world.",
-            "A controlled farming hub at spawn contains four crop-specific plots and a "
-            "barrel with guaranteed starter materials and tools.",
+            "You start with an empty inventory at the natural spawn of a random world.",
+            "A supply barrel two blocks east of spawn contains starter crops, tools, "
+            "crop-specific building materials, and an empty bucket.",
+            "A refillable 2x2 water pool four blocks south of spawn is two blocks deep. "
+            "Collect water there with the bucket when you need it.",
+            "No farm or plots are prepared. Choose where to grow the targets and build "
+            "whatever planting conditions each crop needs.",
+            "Crops grow through Minecraft's natural random-tick mechanics; growth time "
+            "is not fixed or benchmark-scheduled.",
             f"You have {minutes} minutes. Grow, harvest, and replant the target crops.",
-            "Only mature benchmark-grown harvest units removed from the assigned plot score.",
-            "Starter items, immature crops, crops outside the plots, and re-placed harvests "
-            "do not score.",
+            "Mature target crops harvested near you score anywhere in the world, including "
+            "naturally occurring crops. Player-planted crops score only after genuine growth; "
+            "placing and breaking a crop without growth earns nothing. Starter items and "
+            "immature crops do not score.",
             "Targets:",
             *target_lines,
             "Partial progress scores linearly. Emit ready to begin and done when finished.",
