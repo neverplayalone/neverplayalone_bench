@@ -106,34 +106,10 @@ def build_task_id(seed: int, targets: list[FarmingTaskTarget]) -> str:
 
 
 def build_prompt(task: FarmingTask) -> str:
-    target_lines = [
-        f"- Finish with {target.target_count} {target.display_name} items "
-        f"(minecraft:{target.item}) in your inventory "
-        f"({target.points:g} points, {target.difficulty})."
-        for target in task.targets
-    ]
-    minutes = task.duration_seconds // 60
-    return "\n".join(
-        [
-            "You start with an empty inventory at the natural spawn of a random world.",
-            "A supply barrel two blocks east of spawn contains starter crops, tools, "
-            "crop-specific building materials, and an empty bucket.",
-            "A refillable 2x2 water pool four blocks south of spawn is two blocks deep. "
-            "Collect water there with the bucket when you need it.",
-            "No farm or plots are prepared. Choose where to grow the targets and build "
-            "whatever planting conditions each crop needs.",
-            "Crops grow through Minecraft's natural random-tick mechanics; growth time "
-            "is not fixed or benchmark-scheduled.",
-            f"You have {minutes} minutes. Grow, harvest, and replant the target crops.",
-            "Scoring uses only the count of each target item in your inventory at the end "
-            "of the run. Starter supplies and items collected anywhere in the world count. "
-            "There is no initial-item subtraction or harvest-event scoring. Keep the target "
-            "items in your inventory; items left in containers or on the ground do not count.",
-            "Targets:",
-            *target_lines,
-            "Partial progress scores linearly. Emit ready to begin and done when finished.",
-        ]
+    targets = ", ".join(
+        f"{target.target_count} {target.display_name}" for target in task.targets
     )
+    return f"Grow and harvest these crops: {targets}."
 
 
 def target_specs(targets: list[FarmingTaskTarget]) -> list[FarmingTargetSpec]:

@@ -7,8 +7,9 @@ Registered missions are `resource_gathering`, `mining`, `crafting_v1`,
 
 The `farming` mission starts the agent with an empty inventory at the natural
 spawn of a seeded world. It does not clear terrain or build farm plots. A small
-barrel beside spawn contains starter crops, tools, crop-specific materials, and
-an empty bucket. A small, refillable water pool is placed nearby. The agent
+barrel beside spawn contains starter crops, a stone hoe, stone pickaxe, stone axe,
+crop-specific materials, and an empty bucket. A small, refillable water pool is
+placed nearby. The agent
 chooses where to farm. Each 20-minute task selects two easy
 crops worth 20 points each and two medium crops worth 30 points each, for an
 exact maximum of 100. Growth uses Minecraft's native random-tick mechanics.

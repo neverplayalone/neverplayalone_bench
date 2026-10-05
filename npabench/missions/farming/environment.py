@@ -78,7 +78,9 @@ def _place_supply_cache(
     command_with_retry(rcon, f"setblock {bx} {y - 1} {bz} oak_planks")
     command_with_retry(rcon, f"setblock {bx} {y} {bz} barrel")
     command_with_retry(rcon, f"setblock {bx} {y + 1} {bz} air")
-    supplies: Counter[str] = Counter({"stone_hoe": 1, "stone_axe": 1, "bucket": 1})
+    supplies: Counter[str] = Counter(
+        {"stone_hoe": 1, "stone_pickaxe": 1, "stone_axe": 1, "bucket": 1}
+    )
     # Keep utility wood separate from the oak-log inventory target.
     supplies["birch_log"] += mission_config.environment.utility_log_count
     for target in mission_config.targets:

@@ -123,24 +123,14 @@ def test_task_generation_is_deterministic_random_and_always_100_points() -> None
     assert len(worlds) == 1000
 
 
-def test_prompt_describes_natural_spawn_and_final_inventory_scoring() -> None:
+def test_prompt_is_one_sentence_with_target_crops_and_counts() -> None:
     task, config = built_config()
-    assert "empty inventory" in task.prompt
-    assert "natural spawn of a random world" in task.prompt
-    assert "supply barrel two blocks east of spawn" in task.prompt
-    assert "an empty bucket" in task.prompt
-    assert "2x2 water pool four blocks south of spawn" in task.prompt
-    assert "No farm or plots are prepared" in task.prompt
-    assert "inventory at the end" in task.prompt
-    assert "Starter supplies and items collected anywhere" in task.prompt
-    assert "no initial-item subtraction" in task.prompt
-    assert "containers or on the ground do not count" in task.prompt
-    assert "20 minutes" in task.prompt
-    assert "natural random-tick mechanics" in task.prompt
+    assert task.prompt == (
+        "Grow and harvest these crops: "
+        "19 Beetroot, 13 Bamboo, 8 Mushrooms, 12 Glow Berries."
+    )
     for target in config.targets:
-        assert target.display_name in task.prompt
-        assert str(target.target_count) in task.prompt
-        assert f"minecraft:{target.item}" in task.prompt
+        assert f"{target.target_count} {target.display_name}" in task.prompt
 
 
 def test_mission_needs_no_plugin_or_runtime(tmp_path) -> None:
@@ -197,6 +187,8 @@ def test_setup_builds_only_small_pool_and_supplies_selected_starters() -> None:
     assert any(command.startswith("setblock 4 70 -1 barrel") for command in rcon.commands)
     barrel = [c for c in rcon.commands if c.startswith("item replace block")]
     assert any("minecraft:bucket 1" in command for command in barrel)
+    for tool in ("stone_hoe", "stone_pickaxe", "stone_axe"):
+        assert any(f"minecraft:{tool} 1" in command for command in barrel)
     assert not any("minecraft:water_bucket" in command for command in barrel)
     assert any("minecraft:birch_log" in command for command in barrel)
     for target in config.targets:
