@@ -251,7 +251,10 @@ class ReferenceWorldBuilder:
                 rcon.command("save-all flush")
         finally:
             stop_agent_run_slot(builder_slot, quiet=True)
-        shutil.copytree(builder_slot.data_dir, output_dir)
-        cleanup_run_worlds(builder_slot.data_root)
+        try:
+            shutil.copytree(builder_slot.data_dir, output_dir)
+            mission.prepare_reference_world(output_dir, mission_config)
+        finally:
+            cleanup_run_worlds(builder_slot.data_root)
         console.log(f"Reference world ready: {output_dir}")
         return output_dir

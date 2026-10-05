@@ -3,7 +3,23 @@
 NPABench is a Minecraft benchmark harness for protocol agents.
 
 Registered missions are `resource_gathering`, `mining`, `crafting_v1`,
-`crafting_v2`, `crafting_v3`, and `combat`.
+`crafting_v2`, `crafting_v3`, `combat`, and `farming`.
+
+The `farming` mission starts the agent with an empty inventory at the natural
+spawn of a seeded world. It does not clear terrain or build farm plots. A small
+barrel beside spawn contains starter crops, a stone hoe, stone pickaxe, stone axe,
+crop-specific materials, and an empty bucket. A small, refillable water pool is
+placed nearby. The agent
+chooses where to farm. Each 20-minute task selects two easy
+crops worth 20 points each and two medium crops worth 30 points each, for an
+exact maximum of 100. Growth uses Minecraft's native random-tick mechanics.
+Scoring uses only the final inventory count of each target item, with linear
+partial credit capped at the target's points. Starter supplies and items gathered
+anywhere count without subtracting initial supplies. Items left in containers or
+on the ground do not count. Repeated placement and breaking does not accumulate
+points: only the items held at the end matter. Oak targets count oak-log items,
+and melon targets count melon blocks (not melon slices). No farming plugin or
+harvest-event tracker is installed or required.
 
 The `combat` mission starts the agent empty and provides ten minutes to
 gather and craft equipment, followed by eight minutes of staged, deterministic
