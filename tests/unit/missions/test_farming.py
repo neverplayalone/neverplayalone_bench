@@ -1,23 +1,14 @@
 from __future__ import annotations
 
 from collections import Counter
-from zipfile import ZipFile
 
 import pytest
-import yaml
-
 from npabench.evaluation.run_slot import ServerEndpoint
 from npabench.evaluation.run_trace import AgentRunTrace, FinalAgentState
 from npabench.missions.farming import FarmingMission
 from npabench.missions.farming.config_schema import FarmingMissionConfig
 from npabench.missions.farming.environment import configure_farming_world, setup_farming_agent
 from npabench.missions.farming.final_state import collect_farming_state
-from npabench.missions.farming.ledger import (
-    HARVEST_OBJECTIVE,
-    PLUGIN_SCORE_HOLDER,
-    SYSTEM_OBJECTIVE,
-)
-from npabench.missions.farming.runtime import FarmingController
 from npabench.missions.farming.scoring import score_farming_run
 from npabench.missions.farming.task import FarmingTask, generate_task
 from npabench.missions.registry import get_mission
@@ -31,9 +22,7 @@ class FakeRcon:
         inventory: dict[str, int] | None = None,
     ) -> None:
         self.commands: list[str] = []
-        self.scores = (
-            scores if scores is not None else {(PLUGIN_SCORE_HOLDER, SYSTEM_OBJECTIVE): 1}
-        )
+        self.scores = scores or {}
         self.inventory = inventory or {}
 
     def command(self, command: str) -> str:
@@ -86,8 +75,7 @@ def trace_for(config: FarmingMissionConfig) -> AgentRunTrace:
 
 def full_snapshot(config: FarmingMissionConfig) -> dict:
     return {
-        "harvests": {target.key: target.target_count for target in config.targets},
-        "runtime": {"status": "stopped", "harvests": {}},
+        "inventory": {target.item: target.target_count for target in config.targets},
         "alive": True,
         "plots": [],
     }
@@ -135,7 +123,7 @@ def test_task_generation_is_deterministic_random_and_always_100_points() -> None
     assert len(worlds) == 1000
 
 
-def test_prompt_describes_natural_spawn_and_anywhere_harvest_scoring() -> None:
+def test_prompt_describes_natural_spawn_and_final_inventory_scoring() -> None:
     task, config = built_config()
     assert "empty inventory" in task.prompt
     assert "natural spawn of a random world" in task.prompt
@@ -143,42 +131,32 @@ def test_prompt_describes_natural_spawn_and_anywhere_harvest_scoring() -> None:
     assert "an empty bucket" in task.prompt
     assert "2x2 water pool four blocks south of spawn" in task.prompt
     assert "No farm or plots are prepared" in task.prompt
-    assert "including naturally occurring crops" in task.prompt
+    assert "inventory at the end" in task.prompt
+    assert "Starter supplies and items collected anywhere" in task.prompt
+    assert "no initial-item subtraction" in task.prompt
+    assert "containers or on the ground do not count" in task.prompt
     assert "20 minutes" in task.prompt
     assert "natural random-tick mechanics" in task.prompt
-    assert "immature crops do not score" in task.prompt
-    assert "placing and breaking a crop without growth earns nothing" in task.prompt
     for target in config.targets:
         assert target.display_name in task.prompt
         assert str(target.target_count) in task.prompt
+        assert f"minecraft:{target.item}" in task.prompt
 
 
-def test_plugin_installs_per_task_targets_and_compiled_listener(tmp_path) -> None:
+def test_mission_needs_no_plugin_or_runtime(tmp_path) -> None:
     mission, config = mission_and_config()
     task = mission.generate_task(config, 3)
     built = mission.build_mission_config(config, task)
     mission.prepare_reference_world(tmp_path, built)
-    plugin_dir = tmp_path / "plugins"
-    plugin_jar = plugin_dir / "npabench-farming-ledger.jar"
-    with ZipFile(plugin_jar) as archive:
-        assert "org/npabench/farming/FarmingLedgerPlugin.class" in archive.namelist()
-        assert b"org.npabench.farming.FarmingLedgerPlugin" in archive.read("plugin.yml")
-    plugin_config = yaml.safe_load((plugin_dir / "NpaFarmingLedger/config.yml").read_text())
-    assert plugin_config["username"] == built.username
-    assert plugin_config["targets"] == [
-        {
-            "holder": target.harvest_holder,
-            "planted_block": target.planted_block,
-            "mature_block": target.mature_block,
-        }
-        for target in built.targets
-    ]
+    assert not (tmp_path / "plugins").exists()
+    assert mission.start_runtime(ServerEndpoint(), built, {}) is None
 
 
-def test_setup_refuses_missing_event_scorer() -> None:
+def test_setup_does_not_require_harvest_scoreboards() -> None:
     _, config = built_config()
-    with pytest.raises(RuntimeError, match="plugin did not load"):
-        setup_farming_agent(FakeRcon(scores={}), config)
+    rcon = FakeRcon()
+    setup_farming_agent(rcon, config)
+    assert not any("nff_" in command for command in rcon.commands)
 
 
 def test_world_configuration_preserves_natural_day_weather_and_growth() -> None:
@@ -237,15 +215,13 @@ def test_supply_kit_fits_barrel_across_seed_samples() -> None:
         assert len(barrel) <= 27
 
 
-def test_final_state_reads_worldwide_harvest_ledger() -> None:
+def test_final_state_reads_inventory_without_harvest_ledger() -> None:
     _, config = built_config()
-    scores = {
-        (target.harvest_holder, HARVEST_OBJECTIVE): index + 2
-        for index, target in enumerate(config.targets)
-    }
-    scores[("npabench_agent", "mcb_deaths")] = 3
+    scores = {("npabench_agent", "mcb_deaths"): 3}
+    inventory = {target.item: index + 2 for index, target in enumerate(config.targets)}
+    rcon = FakeRcon(scores=scores, inventory=inventory)
     snapshot = collect_farming_state(
-        FakeRcon(scores=scores),
+        rcon,
         config,
         {
             "death_baseline": 1,
@@ -256,9 +232,10 @@ def test_final_state_reads_worldwide_harvest_ledger() -> None:
             "water_source": {"item": "bucket", "position": (0, 69, 4)},
         },
     )
-    assert snapshot["harvests"] == {
-        target.key: index + 2 for index, target in enumerate(config.targets)
-    }
+    assert snapshot["inventory"] == inventory
+    assert snapshot["final_state"].inventory == inventory
+    assert "harvests" not in snapshot
+    assert not any("nff_" in command for command in rcon.commands)
     assert snapshot["deaths"] == 2
     assert snapshot["plots"] == []
     assert snapshot["supply_cache"] == (2, 70, 0)
@@ -269,6 +246,8 @@ def test_full_completion_scores_exactly_100_without_plots() -> None:
     report = score_farming_run(config, trace_for(config), full_snapshot(config))
     assert report["score"] == pytest.approx(100.0)
     assert report["max_score"] == 100.0
+    assert report["scoring_method"] == "final_inventory"
+    assert "harvests" not in report
     assert report["plots"] == []
     assert {row["tier"]: row["score"] for row in report["tiers"]} == pytest.approx(
         {"easy": 40.0, "medium": 60.0}
@@ -282,31 +261,55 @@ def test_partial_credit_is_linear_and_overproduction_is_capped() -> None:
     report = score_farming_run(
         config,
         trace_for(config),
-        {"harvests": {target.key: achieved}, "runtime": {"status": "stopped"}},
+        {"inventory": {target.item: achieved}},
     )
     assert report["score"] == pytest.approx(target.points * achieved / target.target_count)
     capped = score_farming_run(
         config,
         trace_for(config),
         {
-            "harvests": {target.key: target.target_count + 100},
-            "runtime": {"status": "stopped"},
+            "inventory": {target.item: target.target_count + 100},
         },
     )
     assert capped["score"] == pytest.approx(target.points)
 
 
-def test_runtime_failure_invalidates_score() -> None:
+def test_snapshot_failure_invalidates_score() -> None:
     _, config = built_config()
     snapshot = full_snapshot(config)
-    snapshot["runtime"] = {"status": "error", "errors": ["harvest plugin failed"]}
+    snapshot["error"] = "snapshot failed: RCON unavailable"
     report = score_farming_run(config, trace_for(config), snapshot)
     assert report["score"] == 0.0
     assert report["status"] == "error"
+    assert report["error"] == snapshot["error"]
 
 
-def test_runtime_only_observes_natural_growth() -> None:
-    _, config = built_config(seed=1)
-    controller = FarmingController(ServerEndpoint(), config)
-    assert controller.report()["growth_mode"] == "minecraft_random_ticks"
-    assert not hasattr(controller, "_advance_target")
+def test_only_final_inventory_counts_even_with_old_harvest_data() -> None:
+    _, config = built_config()
+    snapshot = {
+        "inventory": {},
+        "harvests": {target.key: target.target_count * 10 for target in config.targets},
+    }
+    report = score_farming_run(config, trace_for(config), snapshot)
+    assert report["score"] == 0.0
+    target = config.targets[1]
+    # Collecting a starter stack counts once; cycling it does not multiply credit.
+    assert target.starter_item == target.item
+    snapshot["inventory"] = {target.item: target.starter_count}
+    first = score_farming_run(config, trace_for(config), snapshot)
+    snapshot["harvests"][target.key] += 1000
+    repeated = score_farming_run(config, trace_for(config), snapshot)
+    assert repeated["score"] == first["score"] == pytest.approx(
+        target.points * min(target.starter_count / target.target_count, 1)
+    )
+    assert repeated["resources"][1]["inventory_count"] == target.starter_count
+
+
+def test_inventory_items_use_item_identifier_not_crop_key() -> None:
+    _, config = built_config()
+    target = next(target for target in config.targets if target.key == "mushroom")
+    report = score_farming_run(
+        config, trace_for(config), {"inventory": {"red_mushroom": target.target_count}}
+    )
+    assert report["score"] == target.points
+    assert report["resources"][2]["achieved"] == target.target_count

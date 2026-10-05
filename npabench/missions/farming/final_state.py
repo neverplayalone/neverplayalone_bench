@@ -7,7 +7,6 @@ from mcrcon import MCRcon
 from npabench.evaluation.run_trace import FinalAgentState
 from npabench.minecraft.rcon_helpers import count_item, parse_pos, parse_scalar, read_score
 from npabench.missions.farming.config_schema import FarmingMissionConfig
-from npabench.missions.farming.ledger import HARVEST_OBJECTIVE
 from npabench.missions.farming.environment import DEATH_OBJECTIVE
 
 
@@ -26,10 +25,6 @@ def collect_farming_state(
         rcon.command(f"data get entity {mission_config.username} foodLevel")
     )
 
-    harvests = {
-        target.key: max(0, read_score(rcon, target.harvest_holder, HARVEST_OBJECTIVE))
-        for target in mission_config.targets
-    }
     inventory = {
         target.item: count_item(rcon, mission_config.username, target.item)
         for target in mission_config.targets
@@ -42,7 +37,6 @@ def collect_farming_state(
     )
     return {
         "final_state": final_state,
-        "harvests": harvests,
         "inventory": inventory,
         "deaths": deaths,
         "alive": final_state.health is not None and final_state.health > 0,

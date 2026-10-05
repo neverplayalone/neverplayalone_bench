@@ -107,7 +107,8 @@ def build_task_id(seed: int, targets: list[FarmingTaskTarget]) -> str:
 
 def build_prompt(task: FarmingTask) -> str:
     target_lines = [
-        f"- Harvest {target.target_count} mature {target.display_name} units anywhere in the world "
+        f"- Finish with {target.target_count} {target.display_name} items "
+        f"(minecraft:{target.item}) in your inventory "
         f"({target.points:g} points, {target.difficulty})."
         for target in task.targets
     ]
@@ -124,10 +125,10 @@ def build_prompt(task: FarmingTask) -> str:
             "Crops grow through Minecraft's natural random-tick mechanics; growth time "
             "is not fixed or benchmark-scheduled.",
             f"You have {minutes} minutes. Grow, harvest, and replant the target crops.",
-            "Mature target crops harvested near you score anywhere in the world, including "
-            "naturally occurring crops. Player-planted crops score only after genuine growth; "
-            "placing and breaking a crop without growth earns nothing. Starter items and "
-            "immature crops do not score.",
+            "Scoring uses only the count of each target item in your inventory at the end "
+            "of the run. Starter supplies and items collected anywhere in the world count. "
+            "There is no initial-item subtraction or harvest-event scoring. Keep the target "
+            "items in your inventory; items left in containers or on the ground do not count.",
             "Targets:",
             *target_lines,
             "Partial progress scores linearly. Emit ready to begin and done when finished.",

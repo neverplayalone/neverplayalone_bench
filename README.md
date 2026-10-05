@@ -12,11 +12,13 @@ an empty bucket. A small, refillable water pool is placed nearby. The agent
 chooses where to farm. Each 20-minute task selects two easy
 crops worth 20 points each and two medium crops worth 30 points each, for an
 exact maximum of 100. Growth uses Minecraft's native random-tick mechanics.
-A bundled Paper listener scores mature target crops when the agent harvests
-them. Naturally occurring crops count; player-placed blocks count only after
-genuine growth. Repeatedly placing and breaking a starter crop never earns
-credit. Starter items and immature crops do not score. Final inventory is
-reported but is not used for scoring.
+Scoring uses only the final inventory count of each target item, with linear
+partial credit capped at the target's points. Starter supplies and items gathered
+anywhere count without subtracting initial supplies. Items left in containers or
+on the ground do not count. Repeated placement and breaking does not accumulate
+points: only the items held at the end matter. Oak targets count oak-log items,
+and melon targets count melon blocks (not melon slices). No farming plugin or
+harvest-event tracker is installed or required.
 
 The `combat` mission starts the agent empty and provides ten minutes to
 gather and craft equipment, followed by eight minutes of staged, deterministic

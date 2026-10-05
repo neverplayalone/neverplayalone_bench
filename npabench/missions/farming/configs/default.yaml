@@ -1,4 +1,4 @@
-# Farming v1 -- random natural world and mature-harvest scoring anywhere.
+# Farming v1 -- random natural world and final-inventory scoring.
 
 id: farming
 minecraft_version: "1.21.11"
@@ -132,7 +132,7 @@ menu:
       item: melon
       starter_item: melon_seeds
       starter_count: 8
-      display_name: Melons
+      display_name: Melon Blocks
       difficulty: medium
       template: stem
       target_range: [6, 10]
@@ -212,7 +212,7 @@ menu:
       item: oak_log
       starter_item: oak_sapling
       starter_count: 4
-      display_name: Oak Trees
+      display_name: Oak Logs
       difficulty: medium
       template: tree
       target_range: [2, 4]

@@ -9,11 +9,6 @@ from npabench.minecraft.rcon_client import command_with_retry
 from npabench.minecraft.rcon_helpers import read_score
 from npabench.minecraft.spawn import use_world_spawn
 from npabench.missions.farming.config_schema import FarmingMissionConfig
-from npabench.missions.farming.ledger import (
-    HARVEST_OBJECTIVE,
-    PLUGIN_SCORE_HOLDER,
-    SYSTEM_OBJECTIVE,
-)
 
 DEATH_OBJECTIVE = "mcb_deaths"
 
@@ -44,17 +39,6 @@ def setup_farming_agent(
     command_with_retry(rcon, f"clear {mission_config.username}")
     command_with_retry(rcon, f"effect clear {mission_config.username}")
     command_with_retry(rcon, "kill @e[type=item]")
-
-    if read_score(rcon, PLUGIN_SCORE_HOLDER, SYSTEM_OBJECTIVE) != 1:
-        raise RuntimeError("farming harvest plugin did not load")
-
-    command_with_retry(rcon, f"scoreboard objectives remove {HARVEST_OBJECTIVE}")
-    command_with_retry(rcon, f"scoreboard objectives add {HARVEST_OBJECTIVE} dummy")
-    for target in mission_config.targets:
-        command_with_retry(
-            rcon,
-            f"scoreboard players set {target.harvest_holder} {HARVEST_OBJECTIVE} 0",
-        )
 
     # Minecraft chooses the world spawn from the random seed. Do not flatten
     # land, create crop plots, move the player to a hand-picked site, or filter
@@ -95,8 +79,7 @@ def _place_supply_cache(
     command_with_retry(rcon, f"setblock {bx} {y} {bz} barrel")
     command_with_retry(rcon, f"setblock {bx} {y + 1} {bz} air")
     supplies: Counter[str] = Counter({"stone_hoe": 1, "stone_axe": 1, "bucket": 1})
-    # Use a non-target wood type: the cache itself must not contain oak logs
-    # that could be placed and immediately harvested for oak-tree credit.
+    # Keep utility wood separate from the oak-log inventory target.
     supplies["birch_log"] += mission_config.environment.utility_log_count
     for target in mission_config.targets:
         supplies[target.starter_item] += target.starter_count

@@ -13,8 +13,7 @@ def score_farming_run(
     final_snapshot: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     final_snapshot = final_snapshot or {}
-    harvests = final_snapshot.get("harvests", {}) or {}
-    runtime = final_snapshot.get("runtime") or {}
+    inventory = final_snapshot.get("inventory", {}) or {}
     resources: list[dict[str, Any]] = []
     tiers: list[dict[str, Any]] = []
     total_score = 0.0
@@ -24,7 +23,7 @@ def score_farming_run(
         tier_score = 0.0
         tier_max = 0.0
         for target in (item for item in mission_config.targets if item.difficulty == difficulty):
-            observed = max(0, int(harvests.get(target.key, 0) or 0))
+            observed = max(0, int(inventory.get(target.item, 0) or 0))
             achieved = min(observed, target.target_count)
             completion_ratio = achieved / target.target_count
             points = target.points * completion_ratio
@@ -39,7 +38,7 @@ def score_farming_run(
                 "target_count": target.target_count,
                 "achieved": achieved,
                 "observed": observed,
-                "harvested_units": observed,
+                "inventory_count": observed,
                 "completion_ratio": completion_ratio,
                 "points": points,
                 "max_points": target.points,
@@ -61,9 +60,9 @@ def score_farming_run(
 
     farming_score = min(100.0, total_score)
     spawned = agent_run_trace.agent_ready_at is not None
-    runtime_failed = isinstance(runtime, dict) and runtime.get("status") == "error"
-    final_score = farming_score if spawned and not runtime_failed else 0.0
-    status = "error" if runtime_failed else ("ok" if spawned else "agent_never_spawned")
+    snapshot_error = final_snapshot.get("error")
+    final_score = farming_score if spawned and not snapshot_error else 0.0
+    status = "error" if snapshot_error else ("ok" if spawned else "agent_never_spawned")
     play_start = agent_run_trace.agent_ready_at or agent_run_trace.started_at
     elapsed = max(0.0, (agent_run_trace.ended_at or time.time()) - play_start)
     return {
@@ -79,8 +78,8 @@ def score_farming_run(
         "status": status,
         "tiers": tiers,
         "resources": resources,
-        "harvests": {key: int(value) for key, value in harvests.items()},
-        "inventory": final_snapshot.get("inventory", {}),
+        "scoring_method": "final_inventory",
+        "inventory": inventory,
         "supply_cache": final_snapshot.get("supply_cache"),
         "plots": final_snapshot.get("plots", []),
         "sources": final_snapshot.get("sources", []),
@@ -91,6 +90,5 @@ def score_farming_run(
         "alive": bool(final_snapshot.get("alive", False)),
         "deaths": max(0, int(final_snapshot.get("deaths", 0) or 0)),
         "final_position": agent_run_trace.final_state.position,
-        "runtime": runtime,
-        "error": (runtime.get("errors") or runtime.get("error")) if runtime_failed else None,
+        "error": snapshot_error,
     }
