@@ -1,0 +1,10 @@
+name: NpaAnimalHusbandry
+version: 4.0.0
+main: org.npabench.animals.AnimalHusbandryPlugin
+api-version: '1.21'
+description: Run-scoped verified offspring growth and final survival tracking
+commands:
+  npaanimals:
+    description: Benchmark console administration
+  npafarm:
+    description: Register and inspect the active agent enclosure

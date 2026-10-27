@@ -1,0 +1,3 @@
+username: npabench_agent
+targets: [cow, sheep]
+starter_babies_per_species: 2

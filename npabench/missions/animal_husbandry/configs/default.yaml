@@ -1,0 +1,28 @@
+id: animal_husbandry
+minecraft_version: "1.21.11"
+world_type: normal
+generate_structures: true
+difficulty: peaceful
+memory: 2G
+duration_seconds: 1200
+world_size: 5000
+spawn_time: 1000
+username: npabench_agent
+# Inclusive ranges. Each selected species gets its own seeded random goal.
+# Keep goals between 2 and 4. Crop supplies are sampled separately per task.
+goal_count_ranges:
+  cow: [2, 4]
+  sheep: [2, 4]
+  pig: [2, 4]
+  chicken: [2, 4]
+  rabbit: [2, 4]
+# Supplied starters are unscored; only bred offspring can earn points.
+starter_babies_per_species: 2
+min_farm_size: 20
+max_farm_size: 64
+# Each task independently samples 1-4 wheat seeds, carrots, potatoes and beetroot seeds.
+# Counts are stored in task.starter_crops and copied to the resolved mission config.
+# The same task gives every agent the same kit, plus
+# 128 oak fences and 8 oak fence gates. No prepared animal food or tools.
+# Grow crops outside the animal enclosure; tilled soil fails its solid-floor check.
+# Native crop growth uses random_tick_speed=3; duration is fixed at 1200 seconds.
