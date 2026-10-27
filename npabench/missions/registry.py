@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from npabench.missions.animal_husbandry import AnimalHusbandryMission
 from npabench.missions.base import Mission
 from npabench.missions.combat import CombatMission
 from npabench.missions.crafting import CraftingMission
@@ -17,6 +18,7 @@ _MISSIONS: list[Mission] = [
     CraftingV3Mission(),
     CombatMission(),
     FarmingMission(),
+    AnimalHusbandryMission(),
 ]
 
 MISSIONS: dict[str, Mission] = {mission.id: mission for mission in _MISSIONS}
