@@ -185,7 +185,7 @@ def test_random_goals_cover_each_species_range_and_match_prompt(mission):
             low, high = base.goal_count_ranges[target.key]
             assert low <= target.target_count <= high
             observed[target.key].add(target.target_count)
-            assert f"{target.target_count} raised adult {target.key} offspring" in task.prompt
+            assert f"{target.target_count} adult {target.key} offspring" in task.prompt
     assert all(counts == {2, 3, 4} for counts in observed.values())
 
 
@@ -243,17 +243,14 @@ def test_starters_never_score_even_if_marked_grown_and_alive(mission):
     )
 
 
-def test_task_describes_agent_built_enclosure(mission):
+def test_task_prompt_contains_only_targets_and_time_limit(mission):
     task = mission.generate_task(mission.load_config(mission.default_config_path()), 10)
+    first, second = task.targets
     assert task.generator_version == "4.1.0"
-    for phrase in (
-        "at least 20 by 20",
-        "128 oak fences",
-        "/npafarm register",
-        "ZERO total points",
-        "Starters never earn points",
-    ):
-        assert phrase in task.prompt
+    assert task.prompt == (
+        f"Raise {first.target_count} adult {first.key} offspring and "
+        f"{second.target_count} adult {second.key} offspring within 20 minutes."
+    )
 
 
 @pytest.mark.parametrize("valid", [False, None])
@@ -378,17 +375,7 @@ def test_combined_prompt_and_fixed_twenty_minute_budget(mission):
     task = mission.generate_task(base, 10)
     assert base.duration_seconds == 1200
     assert task.schema_version == 5 and task.task_id.startswith("animal_husbandry_v4_1_")
-    for text in (
-        "1-4 each",
-        "Inspect the chest",
-        "feed directly",
-        "reserve for replanting",
-        "OUTSIDE",
-        "no separate points",
-        "random_tick_speed=3",
-        "20 minutes",
-    ):
-        assert text in task.prompt
+    assert task.prompt.endswith("within 20 minutes.")
     raw = base.model_dump()
     raw["duration_seconds"] = 1800
     with pytest.raises(ValidationError):
